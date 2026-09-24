@@ -1,4 +1,4 @@
-# Arduino Blocks Visualizer — Backend
+# Code to Block — Backend
 
 API REST responsável pela autenticação de usuários (local e Google OAuth), pelo catálogo de funções pré-definidas do Arduino (com seu código-fonte e a definição do bloco visual correspondente) e pela persistência dos projetos dos usuários.
 
@@ -21,7 +21,7 @@ API REST responsável pela autenticação de usuários (local e Google OAuth), p
 
 ## Requisitos Funcionais
 
-Disponíveis no documento: 
+Disponíveis no documento: https://github.com/oficina-de-integracao-II/code-to-block-backend/blob/1312bdd9ecf81a0f520b8caf9ed27f01c6113cb6/REQUISITOS.md
 
 ---
 
