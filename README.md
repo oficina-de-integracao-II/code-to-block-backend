@@ -179,10 +179,10 @@ cd code-to-block-backend
 # 2. Instalar dependências
 npm install
 
-# 3. Subir banco de dados local (a partir de BE-02)
+# 3. Subir banco de dados local
 docker-compose up -d
 
-# 4. Configurar variáveis de ambiente (a partir de BE-02)
+# 4. Configurar variáveis de ambiente
 cp .env.example .env
 # Editar .env com os valores necessários (ver abaixo)
 
@@ -208,28 +208,42 @@ npm run format
 
 ### Variáveis de ambiente (`.env.example`)
 ```
+# Postgres (usado pelo docker-compose.yml)
+POSTGRES_USER=user
+POSTGRES_PASSWORD=password
+POSTGRES_DB=arduino_blocks
+POSTGRES_PORT=5432
+
+# Aplicação
 DATABASE_URL=postgresql://user:password@localhost:5432/arduino_blocks
 JWT_SECRET=
 JWT_EXPIRES_IN=1d
 GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-GOOGLE_CALLBACK_URL=http://localhost:3000/auth/google/callback
 PORT=3000
 ```
 
-### `docker-compose.yml` (referência)
+As variáveis são validadas na inicialização (Zod, em `src/common/env.schema.ts`): a aplicação falha com uma mensagem clara caso `DATABASE_URL` ou `JWT_SECRET` estejam ausentes. `GOOGLE_CLIENT_SECRET` e `GOOGLE_CALLBACK_URL` serão adicionadas quando o login com Google for implementado (BE-11).
+
+### `docker-compose.yml`
 ```yaml
 services:
   db:
     image: postgres:16
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: arduino_blocks
+      POSTGRES_USER: ${POSTGRES_USER:-user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-arduino_blocks}
     ports:
-      - "5432:5432"
+      - '${POSTGRES_PORT:-5432}:5432'
     volumes:
       - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-user}']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
 volumes:
   db_data:
 ```
