@@ -112,10 +112,10 @@ projects
 | Banco de dados | PostgreSQL |
 | Autenticação | Passport.js (estratégias Local + Google OAuth2) + JWT |
 | Validação de dados | class-validator / Zod |
-| Testes unitários | Jest |
-| Testes de integração | Jest + Supertest |
+| Testes unitários | Vitest |
+| Testes de integração | Vitest + Supertest |
 | Banco de testes | Testcontainers (PostgreSQL em container efêmero) |
-| Lint/Format | ESLint + Prettier |
+| Lint/Format | oxlint + Prettier |
 | Containerização | Docker + Docker Compose (banco local) |
 | CI | GitHub Actions |
 
@@ -173,32 +173,37 @@ backend/
 
 ```bash
 # 1. Clonar o repositório
-git clone <url-do-repo-backend>
-cd backend
+git clone https://github.com/oficina-de-integracao-II/code-to-block-backend.git
+cd code-to-block-backend
 
 # 2. Instalar dependências
 npm install
 
-# 3. Subir banco de dados local
+# 3. Subir banco de dados local (a partir de BE-02)
 docker-compose up -d
 
-# 4. Configurar variáveis de ambiente
+# 4. Configurar variáveis de ambiente (a partir de BE-02)
 cp .env.example .env
 # Editar .env com os valores necessários (ver abaixo)
 
-# 5. Rodar migrations
+# 5. Rodar migrations (a partir de BE-05)
 npx prisma migrate dev
 
-# 6. (Opcional) Popular catálogo de funções inicial
+# 6. (Opcional) Popular catálogo de funções inicial (a partir de BE-15)
 npx prisma db seed
 
 # 7. Rodar em modo desenvolvimento
 npm run start:dev
 
 # 8. Rodar testes
-npm run test              # unitários
-npm run test:integration  # integração (usa Testcontainers)
-npm run test:e2e          # e2e de API
+npm run test              # unitários (Vitest)
+npm run test:cov          # com cobertura
+npm run test:integration  # integração (usa Testcontainers, a partir de BE-04)
+npm run test:e2e          # e2e de API (a partir de BE-04)
+
+# 9. Lint e formatação
+npm run lint
+npm run format
 ```
 
 ### Variáveis de ambiente (`.env.example`)
@@ -257,9 +262,9 @@ volumes:
 
 | Tipo | Escopo | Ferramenta |
 |---|---|---|
-| Unitário | Regras de negócio dos services (Auth, Functions, Projects) com mocks de repositório | Jest |
-| Integração | Endpoints reais da API contra banco de teste efêmero | Jest + Supertest + Testcontainers |
-| Auth/OAuth | Fluxo Google mockado (stub do provedor, sem chamadas reais em CI) | Jest (mocks de estratégia Passport) |
+| Unitário | Regras de negócio dos services (Auth, Functions, Projects) com mocks de repositório | Vitest |
+| Integração | Endpoints reais da API contra banco de teste efêmero | Vitest + Supertest + Testcontainers |
+| Auth/OAuth | Fluxo Google mockado (stub do provedor, sem chamadas reais em CI) | Vitest (mocks de estratégia Passport) |
 | Contrato | Validação de payloads de entrada/saída (DTOs) | class-validator + testes de schema |
 
 **Meta de cobertura:** 70–80% nos módulos `auth/` e `functions/`, por concentrarem regras de negócio e segurança mais sensíveis.
