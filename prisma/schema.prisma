@@ -1,0 +1,54 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model User {
+  id        Int               @id @default(autoincrement())
+  nome      String
+  email     String            @unique
+  senhaHash String?           @map("senha_hash")
+  googleId  String?           @unique @map("google_id")
+  role      Role              @default(USER)
+  criadoEm  DateTime          @default(now()) @map("criado_em")
+  projects  Project[]
+  functions FunctionCatalog[]
+
+  @@map("users")
+}
+
+model FunctionCatalog {
+  id             Int    @id @default(autoincrement())
+  nome           String @unique
+  parametros     Json?
+  codigoArduino  String @map("codigo_arduino")
+  blocoDefinicao Json   @map("bloco_definicao")
+  descricao      String
+  criadoPorId    Int?   @map("criado_por")
+  criadoPor      User?  @relation(fields: [criadoPorId], references: [id], onDelete: SetNull)
+
+  @@map("functions_catalog")
+}
+
+model Project {
+  id           Int      @id @default(autoincrement())
+  usuarioId    Int      @map("usuario_id")
+  usuario      User     @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  nome         String
+  codigoFonte  String   @map("codigo_fonte")
+  estadoBlocos Json     @map("estado_blocos")
+  criadoEm     DateTime @default(now()) @map("criado_em")
+  atualizadoEm DateTime @updatedAt @map("atualizado_em")
+
+  @@index([usuarioId])
+  @@map("projects")
+}
