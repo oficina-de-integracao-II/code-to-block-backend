@@ -1,4 +1,5 @@
 import { defineConfig } from 'prisma/config';
+import 'dotenv/config';
 
 // Prisma 7 não lê o .env sozinho; no CI as variáveis vêm do ambiente.
 try {
