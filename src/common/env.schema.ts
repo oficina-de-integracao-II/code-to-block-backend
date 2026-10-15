@@ -6,6 +6,11 @@ export const envSchema = z.object({
   JWT_EXPIRES_IN: z.string().min(1).default('1d'),
   GOOGLE_CLIENT_ID: z.string().optional(),
   PORT: z.coerce.number().int().positive().default(3000),
+  // Origens liberadas no CORS, separadas por vírgula.
+  CORS_ORIGIN: z
+    .string()
+    .default('http://localhost:5173')
+    .transform((value) => value.split(',').map((origin) => origin.trim())),
 });
 
 export type Env = z.infer<typeof envSchema>;
