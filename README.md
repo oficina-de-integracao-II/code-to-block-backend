@@ -199,8 +199,7 @@ npm run start:dev
 # 8. Rodar testes
 npm run test              # unitários (Vitest)
 npm run test:cov          # com cobertura
-npm run test:integration  # integração (Testcontainers — precisa do Docker rodando)
-npm run test:e2e          # e2e de API (a partir de BE-04)
+npm run test:integration  # integração (usa TEST_DATABASE_URL ou Testcontainers)
 
 # 9. Lint e formatação
 npm run lint
@@ -226,6 +225,10 @@ CORS_ORIGIN=http://localhost:5173
 ```
 
 As variáveis são validadas na inicialização (Zod, em `src/common/env.schema.ts`): a aplicação falha com uma mensagem clara caso `DATABASE_URL` ou `JWT_SECRET` estejam ausentes. `GOOGLE_CLIENT_SECRET` e `GOOGLE_CALLBACK_URL` serão adicionadas quando o login com Google for implementado (BE-11).
+
+Os testes de integração usam `TEST_DATABASE_URL` quando definida. No CI, ela aponta para
+um serviço PostgreSQL efêmero do GitHub Actions; localmente, na ausência dessa variável,
+os testes sobem um PostgreSQL via Testcontainers.
 
 ### `docker-compose.yml`
 ```yaml
@@ -294,6 +297,14 @@ Documentação interativa (Swagger): `http://localhost:3000/docs`. Erros sempre 
 lint → build → testes unitários → subir banco de teste (Testcontainers/serviço Postgres do CI)
 → testes de integração
 ```
+
+### Onde colocar cada tipo de teste
+
+- **Unitário:** arquivo `*.spec.ts` ao lado do código testado (ex.: `src/auth/auth.service.ts` → `src/auth/auth.service.spec.ts`). Roda com `npm run test` / `npm run test:cov`, sem Docker. Mocke dependências externas (repositórios Prisma, serviços HTTP, estratégias Passport) com `vi.fn()`/`vi.mock()` do Vitest ou providers fake no `Test.createTestingModule`, para o teste não depender de rede ou banco.
+- **Integração:** arquivo `*.spec.ts` em `test/integration/`. Roda com `npm run test:integration`, que sobe um PostgreSQL efêmero via Testcontainers e aplica as migrations do Prisma (ver `test/integration/setup.ts`). Use `getTestDatabase()` para obter o `PrismaClient` conectado ao container e `cleanDatabase()` no `afterEach` para limpar as tabelas entre testes do mesmo arquivo. Para testar endpoints HTTP reais, suba a aplicação Nest com `Test.createTestingModule` + `setupApp()` e bata nela com `supertest` (veja `test/integration/health.spec.ts`).
+- **Contrato/DTO:** valide payloads de entrada/saída com `class-validator` nos próprios testes unitários do controller, sem precisar de banco.
+
+**Meta de cobertura:** o `vitest.config.ts` aplica um limite mínimo de 70% (statements, branches, functions, lines) para os módulos `src/auth/**` e `src/functions/**`, validado em `npm run test:cov` e no CI.
 
 ---
 

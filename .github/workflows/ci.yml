@@ -13,6 +13,23 @@ jobs:
   validate:
     name: Lint, build and tests
     runs-on: ubuntu-latest
+    env:
+      JWT_SECRET: ci-test-secret
+      TEST_DATABASE_URL: postgresql://test:test@localhost:5432/code_to_block_test
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: code_to_block_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U test -d code_to_block_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - name: Checkout repository
@@ -35,3 +52,6 @@ jobs:
 
       - name: Run unit tests and coverage
         run: npm run test:cov
+
+      - name: Run integration tests
+        run: npm run test:integration

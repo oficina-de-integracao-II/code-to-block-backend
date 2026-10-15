@@ -1,30 +1,19 @@
-import { execSync } from 'node:child_process';
-import {
-  PostgreSqlContainer,
-  type StartedPostgreSqlContainer,
-} from '@testcontainers/postgresql';
-import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient } from '../../src/generated/prisma/client.js';
+import type { PrismaClient } from '../../src/generated/prisma/client.js';
+import { cleanDatabase, getTestDatabase, teardownTestDatabase } from './setup.js';
 
 describe('schema Prisma (migration inicial)', () => {
-  let container: StartedPostgreSqlContainer;
   let prisma: PrismaClient;
 
   beforeAll(async () => {
-    container = await new PostgreSqlContainer('postgres:16').start();
-    const url = container.getConnectionUri();
-    execSync('npx prisma migrate deploy', {
-      env: { ...process.env, DATABASE_URL: url },
-      stdio: 'pipe',
-    });
-    prisma = new PrismaClient({
-      adapter: new PrismaPg({ connectionString: url }),
-    });
+    ({ prisma } = await getTestDatabase());
+  });
+
+  afterEach(async () => {
+    await cleanDatabase();
   });
 
   afterAll(async () => {
-    await prisma?.$disconnect();
-    await container?.stop();
+    await teardownTestDatabase();
   });
 
   it('aplica a migration em banco limpo', async () => {
