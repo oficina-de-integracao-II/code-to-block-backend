@@ -1,0 +1,627 @@
+
+openapi: 3.1.0
+
+info:
+  title: Code to Blocks API
+  version: 0.1.0
+  description: |
+    Contrato inicial da API do Code to Blocks.
+    Os endpoints documentados representam o comportamento planejado,
+    não necessariamente funcionalidades já implementadas.
+
+    Decisões desta versão:
+    - Login Google recebe um Google Identity Services ID token.
+    - Login local e Google retornam accessToken e user.
+    - O catálogo de funções é somente leitura.
+    - Não há CRUD administrativo de funções.
+    - Os limites de tamanho dos payloads ainda serão definidos.
+    - A definição Blockly é uma proposta inicial para revisão com o frontend.
+
+servers:
+  - url: http://localhost:3000
+    description: Desenvolvimento local
+
+tags:
+  - name: Health
+  - name: Auth
+  - name: Functions
+  - name: Projects
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      operationId: getHealth
+      summary: Verifica se a API está funcionando
+      description: Retorna o estado de disponibilidade da API.
+      security: []
+      responses:
+        '200':
+          description: API disponível
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    const: ok
+                additionalProperties: false
+
+  /auth/register:
+    post:
+      tags: [Auth]
+      operationId: register
+      summary: Cria uma conta com e-mail e senha
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Conta criada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Já existe uma conta com este e-mail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      operationId: login
+      summary: Autentica com e-mail e senha
+      description: Autentica o usuário com e-mail e senha. Credenciais inválidas retornam o mesmo erro genérico.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login realizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Credenciais inválidas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /auth/google:
+    post:
+      tags: [Auth]
+      operationId: loginWithGoogle
+      summary: Autentica com Google Identity Services
+      description: |
+        Recebe um ID token emitido pelo Google Identity Services.
+        O backend valida a assinatura, a audiência e a expiração.
+        O cliente não deve enviar um access token do Google neste endpoint.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GoogleLoginRequest'
+      responses:
+        '200':
+          description: Login Google realizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: ID token inválido, expirado ou com audiência incorreta
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      operationId: getCurrentUser
+      summary: Retorna o usuário autenticado
+      description: Retorna os dados públicos do usuário associado ao token JWT válido.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Usuário autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logout
+      summary: Encerra a sessão atual
+      description: |
+        Invalida o token atual até seu vencimento.
+        O token revogado deve ser rejeitado em rotas protegidas.
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Sessão encerrada
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /functions:
+    get:
+      tags: [Functions]
+      operationId: listFunctions
+      summary: Lista as funções disponíveis no catálogo
+      description: Retorna as funções disponíveis no catálogo para uso no editor Blockly.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Lista de funções
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FunctionSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /functions/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [Functions]
+      operationId: getFunctionById
+      summary: Retorna os detalhes de uma função
+      description: Retorna os detalhes de uma função, incluindo sua definição Blockly e seus parâmetros, quando disponíveis.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Detalhes da função
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FunctionDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /projects:
+    post:
+      tags: [Projects]
+      operationId: createProject
+      summary: Cria um projeto
+      description: |
+        O dono do projeto é determinado pelo token autenticado.
+        Um campo usuarioId enviado pelo cliente não deve alterar a propriedade.
+        Os limites de tamanho dos campos ainda serão definidos.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectWriteRequest'
+      responses:
+        '201':
+          description: Projeto criado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '413':
+          description: Payload excede o limite configurado pelo servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+    get:
+      tags: [Projects]
+      operationId: listProjects
+      summary: Lista os projetos do usuário autenticado
+      description: |
+        Retorna somente projetos do usuário autenticado,
+        ordenados pela atualização mais recente primeiro.
+        O limite máximo de itens por página será definido na implementação.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          description: Número da página, começando em 1.
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          description: Quantidade de itens por página; o máximo será definido depois.
+          schema:
+            type: integer
+            minimum: 1
+            default: 10
+      responses:
+        '200':
+          description: Página de projetos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /projects/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+
+    get:
+      tags: [Projects]
+      operationId: getProjectById
+      summary: Busca um projeto do usuário autenticado
+      description: Retorna 404 se o projeto não existir ou pertencer a outro usuário.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Projeto encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags: [Projects]
+      operationId: updateProject
+      summary: Atualiza um projeto do usuário autenticado
+      description: Retorna 404 se o projeto não existir ou pertencer a outro usuário.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectWriteRequest'
+      responses:
+        '200':
+          description: Projeto atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '413':
+          description: Payload excede o limite configurado pelo servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+    delete:
+      tags: [Projects]
+      operationId: deleteProject
+      summary: Exclui um projeto do usuário autenticado
+      description: Retorna 404 se o projeto não existir ou pertencer a outro usuário.
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Projeto excluído
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      description: Identificador numérico do recurso.
+      schema:
+        type: integer
+        minimum: 1
+
+  responses:
+    BadRequest:
+      description: Requisição inválida ou campos fora do formato esperado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+
+    Unauthorized:
+      description: Token ausente, inválido, expirado ou revogado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+
+    NotFound:
+      description: Recurso não encontrado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+
+  schemas:
+    RegisterRequest:
+      type: object
+      additionalProperties: false
+      required: [nome, email, senha]
+      properties:
+        nome:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          format: email
+        senha:
+          type: string
+          minLength: 8
+          writeOnly: true
+
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [email, senha]
+      properties:
+        email:
+          type: string
+          format: email
+        senha:
+          type: string
+          minLength: 1
+          writeOnly: true
+
+    GoogleLoginRequest:
+      type: object
+      additionalProperties: false
+      required: [idToken]
+      properties:
+        idToken:
+          type: string
+          minLength: 1
+          description: ID token retornado pelo Google Identity Services.
+          writeOnly: true
+
+    AuthResponse:
+      type: object
+      additionalProperties: false
+      required: [accessToken, user]
+      properties:
+        accessToken:
+          type: string
+          description: JWT emitido pela API.
+        user:
+          $ref: '#/components/schemas/User'
+
+    User:
+      type: object
+      additionalProperties: false
+      required: [id, nome, email, role]
+      properties:
+        id:
+          type: integer
+        nome:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [USER, ADMIN]
+
+    FunctionSummary:
+      type: object
+      additionalProperties: false
+      required: [id, nome, descricao, codigoArduino]
+      properties:
+        id:
+          type: integer
+        nome:
+          type: string
+        descricao:
+          type: string
+        codigoArduino:
+          type: string
+
+    FunctionDetail:
+      type: object
+      additionalProperties: false
+      required: [id, nome, descricao, codigoArduino, blocoDefinicao]
+      properties:
+        id:
+          type: integer
+        nome:
+          type: string
+        descricao:
+          type: string
+        codigoArduino:
+          type: string
+        parametros:
+          description: Parâmetros específicos da função, conforme o catálogo.
+          oneOf:
+            - type: object
+              additionalProperties: true
+            - type: array
+              items: {}
+            - type: string
+            - type: number
+            - type: boolean
+            - type: 'null'
+        blocoDefinicao:
+          $ref: '#/components/schemas/BlocklyBlockDefinition'
+
+    BlocklyBlockDefinition:
+      type: object
+      description: |
+        Proposta inicial de definição de bloco Blockly.
+        Revisar os campos opcionais com o frontend antes de estabilizar o contrato.
+        Campos desconhecidos devem ser rejeitados.
+      additionalProperties: false
+      required: [type, message0]
+      properties:
+        type:
+          type: string
+          minLength: 1
+          description: Identificador do tipo de bloco Blockly.
+        message0:
+          type: string
+          description: Texto principal exibido no bloco.
+        args0:
+          type: array
+          description: Argumentos que compõem message0.
+          items:
+            type: object
+            additionalProperties: true
+        colour:
+          oneOf:
+            - type: string
+            - type: number
+          description: Cor do bloco no formato aceito pelo Blockly.
+        inputsInline:
+          type: boolean
+        previousStatement:
+          oneOf:
+            - type: string
+            - type: boolean
+        nextStatement:
+          oneOf:
+            - type: string
+            - type: boolean
+        output:
+          oneOf:
+            - type: string
+            - type: boolean
+        tooltip:
+          type: string
+        helpUrl:
+          type: string
+          format: uri
+
+    ProjectWriteRequest:
+      type: object
+      additionalProperties: false
+      required: [nome, codigoFonte, estadoBlocos]
+      properties:
+        nome:
+          type: string
+          minLength: 1
+        codigoFonte:
+          type: string
+        estadoBlocos:
+          type: object
+          description: Estado serializado dos blocos Blockly.
+          additionalProperties: true
+
+    Project:
+      type: object
+      additionalProperties: false
+      required: [id, nome, codigoFonte, estadoBlocos, criadoEm, atualizadoEm]
+      properties:
+        id:
+          type: integer
+        nome:
+          type: string
+        codigoFonte:
+          type: string
+        estadoBlocos:
+          type: object
+          additionalProperties: true
+        criadoEm:
+          type: string
+          format: date-time
+        atualizadoEm:
+          type: string
+          format: date-time
+
+    ProjectPage:
+      type: object
+      additionalProperties: false
+      required: [items, page, limit, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Project'
+        page:
+          type: integer
+          minimum: 1
+        limit:
+          type: integer
+          minimum: 1
+        total:
+          type: integer
+          minimum: 0
+
+    ApiError:
+      type: object
+      description: Formato padronizado de erro HTTP.
+      required: [statusCode, message]
+      properties:
+        statusCode:
+          type: integer
+        message:
+          oneOf:
+            - type: string
+            - type: array
+              items:
+                type: string
+        error:
+          type: string
+      additionalProperties: true
