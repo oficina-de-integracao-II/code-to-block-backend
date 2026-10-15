@@ -78,20 +78,21 @@ users
 ├── email (unique)
 ├── senha_hash (nullable — null se login exclusivo via Google)
 ├── google_id (nullable, unique)
+├── role (USER | ADMIN, padrão USER)
 ├── criado_em
 
 functions_catalog
 ├── id (PK)
-├── nome (ex.: "Andar")
+├── nome (unique, ex.: "Andar")
 ├── parametros (JSON, opcional)
 ├── codigo_arduino (text)
 ├── bloco_definicao (JSON — spec do bloco Blockly)
 ├── descricao (text)
-├── criado_por (FK users, nullable — se cadastro via admin)
+├── criado_por (FK users, nullable — se cadastro via admin; SET NULL ao remover o usuário)
 
 projects
 ├── id (PK)
-├── usuario_id (FK users)
+├── usuario_id (FK users, ON DELETE CASCADE)
 ├── nome
 ├── codigo_fonte (text — código digitado pelo usuário)
 ├── estado_blocos (JSON — snapshot do estado dos blocos renderizados)
@@ -143,8 +144,7 @@ backend/
 │   │   ├── projects.service.ts
 │   │   └── dto/
 │   ├── prisma/
-│   │   ├── schema.prisma
-│   │   └── prisma.service.ts
+│   │   └── prisma.service.ts   # schema e migrations ficam em prisma/ na raiz
 │   ├── common/                   # guards, interceptors, filters
 │   ├── app.module.ts
 │   └── main.ts
@@ -153,6 +153,7 @@ backend/
 │   ├── integration/
 │   └── e2e/                       # testes de fluxo de API completo
 ├── prisma/
+│   ├── schema.prisma
 │   └── migrations/
 ├── .env.example
 ├── docker-compose.yml
@@ -177,7 +178,7 @@ git clone https://github.com/oficina-de-integracao-II/code-to-block-backend.git
 cd code-to-block-backend
 
 # 2. Instalar dependências
-npm install
+npm install   # também gera o Prisma Client (postinstall)
 
 # 3. Subir banco de dados local
 docker-compose up -d
@@ -186,7 +187,7 @@ docker-compose up -d
 cp .env.example .env
 # Editar .env com os valores necessários (ver abaixo)
 
-# 5. Rodar migrations (a partir de BE-05)
+# 5. Rodar migrations
 npx prisma migrate dev
 
 # 6. (Opcional) Popular catálogo de funções inicial (a partir de BE-15)
@@ -198,7 +199,7 @@ npm run start:dev
 # 8. Rodar testes
 npm run test              # unitários (Vitest)
 npm run test:cov          # com cobertura
-npm run test:integration  # integração (usa Testcontainers, a partir de BE-04)
+npm run test:integration  # integração (Testcontainers — precisa do Docker rodando)
 npm run test:e2e          # e2e de API (a partir de BE-04)
 
 # 9. Lint e formatação
