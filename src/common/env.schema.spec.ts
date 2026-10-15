@@ -6,6 +6,7 @@ const validEnv = {
   JWT_EXPIRES_IN: '1d',
   GOOGLE_CLIENT_ID: 'google-client-id',
   PORT: '3000',
+  CORS_ORIGIN: 'http://localhost:5173, https://app.exemplo.com',
 };
 
 describe('validateEnv', () => {
@@ -30,16 +31,23 @@ describe('validateEnv', () => {
       JWT_EXPIRES_IN: validEnv.JWT_EXPIRES_IN,
       GOOGLE_CLIENT_ID: validEnv.GOOGLE_CLIENT_ID,
       PORT: 3000,
+      CORS_ORIGIN: ['http://localhost:5173', 'https://app.exemplo.com'],
     });
     expect(typeof result.PORT).toBe('number');
   });
 
-  it('aplica valores padrão para JWT_EXPIRES_IN e PORT quando ausentes', () => {
-    const { JWT_EXPIRES_IN: _JWT_EXPIRES_IN, PORT: _PORT, ...rest } = validEnv;
+  it('aplica valores padrão para JWT_EXPIRES_IN, PORT e CORS_ORIGIN quando ausentes', () => {
+    const {
+      JWT_EXPIRES_IN: _JWT_EXPIRES_IN,
+      PORT: _PORT,
+      CORS_ORIGIN: _CORS_ORIGIN,
+      ...rest
+    } = validEnv;
 
     const result = validateEnv(rest);
 
     expect(result.JWT_EXPIRES_IN).toBe('1d');
     expect(result.PORT).toBe(3000);
+    expect(result.CORS_ORIGIN).toEqual(['http://localhost:5173']);
   });
 });

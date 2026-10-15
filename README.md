@@ -220,6 +220,8 @@ JWT_SECRET=
 JWT_EXPIRES_IN=1d
 GOOGLE_CLIENT_ID=
 PORT=3000
+# Origens liberadas no CORS, separadas por vírgula
+CORS_ORIGIN=http://localhost:5173
 ```
 
 As variáveis são validadas na inicialização (Zod, em `src/common/env.schema.ts`): a aplicação falha com uma mensagem clara caso `DATABASE_URL` ou `JWT_SECRET` estejam ausentes. `GOOGLE_CLIENT_SECRET` e `GOOGLE_CALLBACK_URL` serão adicionadas quando o login com Google for implementado (BE-11).
@@ -252,8 +254,11 @@ volumes:
 
 ## Endpoints da API (visão geral)
 
+Documentação interativa (Swagger): `http://localhost:3000/docs`. Erros sempre no formato `{ statusCode, message, error }`.
+
 | Método | Rota | Descrição | RF |
 |---|---|---|---|
+| GET | `/health` | Verifica se a API está no ar | — |
 | POST | `/auth/register` | Cadastro local de usuário | RF01 |
 | POST | `/auth/login` | Login local (e-mail/senha) | RF01, RF03 |
 | GET | `/auth/google` | Inicia fluxo OAuth com Google | RF02 |
