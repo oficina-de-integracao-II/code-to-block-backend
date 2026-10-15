@@ -13,8 +13,9 @@ let prisma: PrismaClient | undefined;
 // para não pagar o custo de subir um container Postgres por arquivo.
 export async function getTestDatabase() {
   if (!container) {
-    container = await new PostgreSqlContainer('postgres:16').start();
-    const url = container.getConnectionUri();
+    const url =
+      process.env.TEST_DATABASE_URL ??
+      (container = await new PostgreSqlContainer('postgres:16').start()).getConnectionUri();
     execSync('npx prisma migrate deploy', {
       env: { ...process.env, DATABASE_URL: url },
       stdio: 'pipe',
@@ -22,7 +23,10 @@ export async function getTestDatabase() {
     prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   }
 
-  return { url: container.getConnectionUri(), prisma: prisma! };
+  return {
+    url: process.env.TEST_DATABASE_URL ?? container!.getConnectionUri(),
+    prisma: prisma!,
+  };
 }
 
 // Limpa as tabelas entre testes sem recriar o schema a cada vez.

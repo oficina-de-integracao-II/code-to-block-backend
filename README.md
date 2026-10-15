@@ -199,7 +199,7 @@ npm run start:dev
 # 8. Rodar testes
 npm run test              # unitários (Vitest)
 npm run test:cov          # com cobertura
-npm run test:integration  # integração (Testcontainers — precisa do Docker rodando)
+npm run test:integration  # integração (usa TEST_DATABASE_URL ou Testcontainers)
 
 # 9. Lint e formatação
 npm run lint
@@ -225,6 +225,10 @@ CORS_ORIGIN=http://localhost:5173
 ```
 
 As variáveis são validadas na inicialização (Zod, em `src/common/env.schema.ts`): a aplicação falha com uma mensagem clara caso `DATABASE_URL` ou `JWT_SECRET` estejam ausentes. `GOOGLE_CLIENT_SECRET` e `GOOGLE_CALLBACK_URL` serão adicionadas quando o login com Google for implementado (BE-11).
+
+Os testes de integração usam `TEST_DATABASE_URL` quando definida. No CI, ela aponta para
+um serviço PostgreSQL efêmero do GitHub Actions; localmente, na ausência dessa variável,
+os testes sobem um PostgreSQL via Testcontainers.
 
 ### `docker-compose.yml`
 ```yaml
