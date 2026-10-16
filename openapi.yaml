@@ -209,6 +209,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FunctionDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -469,7 +471,7 @@ components:
     FunctionSummary:
       type: object
       additionalProperties: false
-      required: [id, nome, descricao, codigoArduino]
+      required: [id, nome, descricao, codigoArduino, blocoDefinicao]
       properties:
         id:
           type: integer
@@ -479,6 +481,8 @@ components:
           type: string
         codigoArduino:
           type: string
+        blocoDefinicao:
+          $ref: '#/components/schemas/BlocklyBlockDefinition'
 
     FunctionDetail:
       type: object
