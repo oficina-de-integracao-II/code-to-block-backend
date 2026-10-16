@@ -7,13 +7,23 @@ describe('AuthController', () => {
 
   const authService = {
     register: vi.fn(),
+    login: vi.fn(),
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
-    controller = new AuthController(
-      authService as unknown as AuthService,
-    );
+    controller = new AuthController(authService as unknown as AuthService);
+  });
+
+  describe('login', () => {
+    it('encaminha as credenciais ao AuthService', async () => {
+      const dto = { email: 'ana@example.com', senha: 'senha-segura-123' };
+      const resposta = { accessToken: 'token', user: { id: 1 } };
+      authService.login.mockResolvedValue(resposta);
+
+      await expect(controller.login(dto)).resolves.toEqual(resposta);
+      expect(authService.login).toHaveBeenCalledWith(dto);
+    });
   });
 
   describe('register', () => {
@@ -22,7 +32,7 @@ describe('AuthController', () => {
         email: 'ana@example.com',
         senha: 'senha-segura-123',
       };
- 
+
       const resposta = {
         id: 1,
         nome: 'ana',
@@ -40,9 +50,7 @@ describe('AuthController', () => {
     });
 
     it('propaga erros lançados pelo AuthService', async () => {
-      authService.register.mockRejectedValue(
-        new Error('Falha no cadastro'),
-      );
+      authService.register.mockRejectedValue(new Error('Falha no cadastro'));
 
       await expect(
         controller.register({

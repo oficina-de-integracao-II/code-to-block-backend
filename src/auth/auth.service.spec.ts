@@ -1,6 +1,7 @@
-import { ConflictException } from '@nestjs/common';
+import { ConflictException, UnauthorizedException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AuthService } from './auth.service.js';
 
@@ -13,10 +14,59 @@ describe('AuthService', () => {
       create: vi.fn(),
     },
   };
+  const jwt = new JwtService({ secret: 'test-secret' });
 
   beforeEach(() => {
     vi.clearAllMocks();
-    service = new AuthService(prisma as unknown as PrismaService);
+    service = new AuthService(prisma as unknown as PrismaService, jwt);
+  });
+
+  describe('login', () => {
+    const senha = 'senha-correta';
+    let usuario: Record<string, unknown>;
+
+    beforeAll(async () => {
+      usuario = {
+        id: 7,
+        nome: 'Ana',
+        email: 'ana@example.com',
+        role: 'USER',
+        senhaHash: await bcrypt.hash(senha, 4),
+      };
+    });
+
+    it('retorna accessToken e dados públicos do usuário', async () => {
+      prisma.user.findUnique.mockResolvedValue(usuario);
+
+      const result = await service.login({ email: 'ana@example.com', senha });
+
+      expect(result.user).toEqual({
+        id: 7,
+        nome: 'Ana',
+        email: 'ana@example.com',
+        role: 'USER',
+      });
+      expect(jwt.verify(result.accessToken)).toMatchObject({
+        sub: 7,
+        role: 'USER',
+      });
+    });
+
+    it.each([
+      ['senha errada', () => usuario, 'outra-senha'],
+      ['e-mail inexistente', () => null, senha],
+      ['conta só com Google', () => ({ ...usuario, senhaHash: null }), senha],
+    ])('rejeita com 401 genérico: %s', async (_caso, encontrado, tentativa) => {
+      prisma.user.findUnique.mockResolvedValue(encontrado());
+
+      const login = service.login({
+        email: 'ana@example.com',
+        senha: tentativa,
+      });
+
+      await expect(login).rejects.toBeInstanceOf(UnauthorizedException);
+      await expect(login).rejects.toThrow('Credenciais inválidas');
+    });
   });
 
   describe('register', () => {
@@ -40,9 +90,9 @@ describe('AuthService', () => {
       const dadosCriacao = prisma.user.create.mock.calls[0][0];
 
       expect(dadosCriacao.data.senhaHash).not.toBe(senha);
-      expect(
-        await bcrypt.compare(senha, dadosCriacao.data.senhaHash!),
-      ).toBe(true);
+      expect(await bcrypt.compare(senha, dadosCriacao.data.senhaHash!)).toBe(
+        true,
+      );
       expect(result).not.toHaveProperty('senha');
       expect(result).not.toHaveProperty('senhaHash');
       expect(result).not.toHaveProperty('senha_hash');

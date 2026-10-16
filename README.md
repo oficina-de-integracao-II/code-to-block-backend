@@ -111,7 +111,7 @@ projects
 | Linguagem | TypeScript |
 | ORM | Prisma |
 | Banco de dados | PostgreSQL |
-| Autenticação | Passport.js (estratégias Local + Google OAuth2) + JWT |
+| Autenticação | JWT (`@nestjs/jwt`) + bcrypt; login local validado direto no `AuthService` (Google: BE-11) |
 | Validação de dados | class-validator / Zod |
 | Testes unitários | Vitest |
 | Testes de integração | Vitest + Supertest |
@@ -131,7 +131,7 @@ backend/
 │   │   ├── auth.module.ts
 │   │   ├── auth.controller.ts
 │   │   ├── auth.service.ts
-│   │   ├── strategies/          # local.strategy.ts, google.strategy.ts, jwt.strategy.ts
+│   │   ├── strategies/          # google.strategy.ts, jwt.strategy.ts (se adotados em BE-10/BE-11)
 │   │   └── dto/
 │   ├── functions/
 │   │   ├── functions.module.ts
@@ -217,6 +217,7 @@ POSTGRES_PORT=5432
 # Aplicação
 DATABASE_URL=postgresql://user:password@localhost:5432/arduino_blocks
 JWT_SECRET=
+# Número + unidade (s, m, h, d), ex.: 15m, 12h, 1d
 JWT_EXPIRES_IN=1d
 GOOGLE_CLIENT_ID=
 PORT=3000
