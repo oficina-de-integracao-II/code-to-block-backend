@@ -10,6 +10,8 @@ import { AuthService } from './auth.service.js';
   imports: [
     PrismaModule,
     JwtModule.registerAsync({
+      // Global para o JwtAuthGuard funcionar em qualquer módulo (ex.: projects).
+      global: true,
       inject: [ConfigService],
       useFactory: (config: ConfigService<Env, true>) => ({
         secret: config.get('JWT_SECRET', { infer: true }),
