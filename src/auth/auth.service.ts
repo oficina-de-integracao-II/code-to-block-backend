@@ -25,6 +25,19 @@ export class AuthService {
     @Inject(GOOGLE_VERIFIER) private readonly verifyGoogle: GoogleVerifier,
   ) {}
 
+  // Mesma resposta para login local, login Google e cadastro.
+  private async buildAuthResponse(user: User) {
+    return {
+      accessToken: await this.jwt.signAsync({ sub: user.id, role: user.role }),
+      user: {
+        id: user.id,
+        nome: user.nome,
+        email: user.email,
+        role: user.role,
+      },
+    };
+  }
+
   async login({ email, senha }: LoginDto) {
     const user = await this.prisma.user.findUnique({ where: { email } });
     const senhaValida = await bcrypt.compare(
@@ -37,7 +50,7 @@ export class AuthService {
       throw new UnauthorizedException('Credenciais inválidas');
     }
 
-    return this.authResponse(user);
+    return this.buildAuthResponse(user);
   }
 
   async loginWithGoogle(idToken: string) {
@@ -54,20 +67,7 @@ export class AuthService {
         create: { email, nome, googleId },
       }));
 
-    return this.authResponse(user);
-  }
-
-  // Mesma resposta para login local e Google.
-  private async authResponse(user: User) {
-    return {
-      accessToken: await this.jwt.signAsync({ sub: user.id, role: user.role }),
-      user: {
-        id: user.id,
-        nome: user.nome,
-        email: user.email,
-        role: user.role,
-      },
-    };
+    return this.buildAuthResponse(user);
   }
 
   async me(id: number) {
@@ -97,19 +97,12 @@ export class AuthService {
 
     const user = await this.prisma.user.create({
       data: {
+        nome: dto.nome,
         email: dto.email,
-        nome: dto.email.split('@')[0],
         senhaHash,
-      },
-      select: {
-        id: true,
-        nome: true,
-        email: true,
-        role: true,
-        criadoEm: true,
       },
     });
 
-    return user;
+    return this.buildAuthResponse(user);
   }
 }
