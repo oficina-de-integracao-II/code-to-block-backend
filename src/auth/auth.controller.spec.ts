@@ -29,16 +29,14 @@ describe('AuthController', () => {
   describe('register', () => {
     it('encaminha os dados do cadastro ao AuthService', async () => {
       const dto = {
+        nome: 'Ana',
         email: 'ana@example.com',
         senha: 'senha-segura-123',
       };
 
       const resposta = {
-        id: 1,
-        nome: 'ana',
-        email: 'ana@example.com',
-        role: 'USER',
-        criadoEm: new Date(),
+        accessToken: 'token',
+        user: { id: 1, nome: 'Ana', email: 'ana@example.com', role: 'USER' },
       };
 
       authService.register.mockResolvedValue(resposta);
@@ -54,6 +52,7 @@ describe('AuthController', () => {
 
       await expect(
         controller.register({
+          nome: 'Ana',
           email: 'ana@example.com',
           senha: 'senha-segura-123',
         }),

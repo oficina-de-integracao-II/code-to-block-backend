@@ -70,7 +70,7 @@ describe('AuthService', () => {
   });
 
   describe('register', () => {
-    it('armazena o hash da senha, não a senha original', async () => {
+    it('usa o nome enviado, armazena o hash da senha e retorna accessToken + user', async () => {
       const senha = 'senha-segura-123';
 
       prisma.user.findUnique.mockResolvedValue(null);
@@ -79,23 +79,34 @@ describe('AuthService', () => {
         nome: data.nome,
         email: data.email,
         role: 'USER',
-        criadoEm: new Date(),
       }));
 
       const result = await service.register({
+        nome: 'Ana',
         email: 'ana@example.com',
         senha,
       });
 
       const dadosCriacao = prisma.user.create.mock.calls[0][0];
 
+      expect(dadosCriacao.data.nome).toBe('Ana');
       expect(dadosCriacao.data.senhaHash).not.toBe(senha);
       expect(await bcrypt.compare(senha, dadosCriacao.data.senhaHash!)).toBe(
         true,
       );
+      expect(result.user).toEqual({
+        id: 1,
+        nome: 'Ana',
+        email: 'ana@example.com',
+        role: 'USER',
+      });
+      expect(jwt.verify(result.accessToken)).toMatchObject({
+        sub: 1,
+        role: 'USER',
+      });
       expect(result).not.toHaveProperty('senha');
-      expect(result).not.toHaveProperty('senhaHash');
-      expect(result).not.toHaveProperty('senha_hash');
+      expect(result.user).not.toHaveProperty('senhaHash');
+      expect(result.user).not.toHaveProperty('senha_hash');
     });
 
     it('rejeita o cadastro quando o e-mail já existe', async () => {
@@ -108,6 +119,7 @@ describe('AuthService', () => {
 
       await expect(
         service.register({
+          nome: 'Ana',
           email: 'ana@example.com',
           senha: 'senha-segura-123',
         }),
