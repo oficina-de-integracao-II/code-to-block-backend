@@ -6,11 +6,13 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import { randomUUID } from 'node:crypto';
 import type { User } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { LoginDto } from './dto/login.dto.js';
 import type { RegisterDto } from './dto/register.dto.js';
 import { GOOGLE_VERIFIER, type GoogleVerifier } from './google-verifier.js';
+import { TokenDenylistService } from './token-denylist.service.js';
 
 // Hash fictício (custo 12): comparado quando o e-mail não existe, para o
 // tempo de resposta não revelar se a conta existe.
@@ -22,13 +24,16 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
+    private readonly denylist: TokenDenylistService,
     @Inject(GOOGLE_VERIFIER) private readonly verifyGoogle: GoogleVerifier,
   ) {}
 
-  // Mesma resposta para login local, login Google e cadastro.
   private async buildAuthResponse(user: User) {
     return {
-      accessToken: await this.jwt.signAsync({ sub: user.id, role: user.role }),
+      accessToken: await this.jwt.signAsync(
+        { sub: user.id, role: user.role },
+        { jwtid: randomUUID() },
+      ),
       user: {
         id: user.id,
         nome: user.nome,
@@ -36,6 +41,10 @@ export class AuthService {
         role: user.role,
       },
     };
+  }
+
+  async logout(jti: string, exp: number) {
+    await this.denylist.revoke(jti, new Date(exp * 1000));
   }
 
   async login({ email, senha }: LoginDto) {

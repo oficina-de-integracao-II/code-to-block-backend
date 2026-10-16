@@ -3,12 +3,14 @@ import {
   Controller,
   Get,
   HttpCode,
+  HttpStatus,
   Post,
   UseGuards,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiCreatedResponse,
+  ApiNoContentResponse,
   ApiOkResponse,
   ApiTags,
   ApiUnauthorizedResponse,
@@ -61,5 +63,17 @@ export class AuthController {
   })
   me(@CurrentUser() user: JwtPayload) {
     return this.authService.me(user.sub);
+  }
+
+  @Post('logout')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiNoContentResponse({ description: 'Sessão encerrada' })
+  @ApiUnauthorizedResponse({
+    description: 'Token ausente, inválido ou expirado',
+  })
+  logout(@CurrentUser() user: JwtPayload) {
+    return this.authService.logout(user.jti, user.exp);
   }
 }
