@@ -8,6 +8,7 @@ describe('AuthController', () => {
   const authService = {
     register: vi.fn(),
     login: vi.fn(),
+    loginWithGoogle: vi.fn(),
     me: vi.fn(),
   };
 
@@ -24,6 +25,18 @@ describe('AuthController', () => {
 
       await expect(controller.login(dto)).resolves.toEqual(resposta);
       expect(authService.login).toHaveBeenCalledWith(dto);
+    });
+  });
+
+  describe('loginWithGoogle', () => {
+    it('encaminha o idToken ao AuthService', async () => {
+      const resposta = { accessToken: 'token', user: { id: 1 } };
+      authService.loginWithGoogle.mockResolvedValue(resposta);
+
+      await expect(
+        controller.loginWithGoogle({ idToken: 'id-token' }),
+      ).resolves.toEqual(resposta);
+      expect(authService.loginWithGoogle).toHaveBeenCalledWith('id-token');
     });
   });
 

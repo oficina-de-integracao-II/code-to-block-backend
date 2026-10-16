@@ -12,13 +12,90 @@ describe('AuthService', () => {
     user: {
       findUnique: vi.fn(),
       create: vi.fn(),
+      upsert: vi.fn(),
     },
   };
   const jwt = new JwtService({ secret: 'test-secret' });
+  const verifyGoogle = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
-    service = new AuthService(prisma as unknown as PrismaService, jwt);
+    service = new AuthService(
+      prisma as unknown as PrismaService,
+      jwt,
+      verifyGoogle,
+    );
+  });
+
+  describe('loginWithGoogle', () => {
+    const perfil = { googleId: 'g-1', email: 'ana@gmail.com', nome: 'Ana' };
+    const usuario = {
+      id: 7,
+      nome: 'Ana',
+      email: 'ana@gmail.com',
+      role: 'USER',
+    };
+
+    beforeEach(() => {
+      verifyGoogle.mockResolvedValue(perfil);
+    });
+
+    it('cria usuário novo com google_id', async () => {
+      prisma.user.findUnique.mockResolvedValue(null);
+      prisma.user.upsert.mockResolvedValue({ ...usuario, googleId: 'g-1' });
+
+      const result = await service.loginWithGoogle('id-token');
+
+      expect(verifyGoogle).toHaveBeenCalledWith('id-token');
+      expect(prisma.user.upsert).toHaveBeenCalledWith({
+        where: { email: 'ana@gmail.com' },
+        update: { googleId: 'g-1', senhaHash: null },
+        create: { email: 'ana@gmail.com', nome: 'Ana', googleId: 'g-1' },
+      });
+      expect(result.user).toEqual(usuario);
+      expect(jwt.verify(result.accessToken)).toMatchObject({ sub: 7 });
+    });
+
+    it('vincula o google_id a usuário existente e descarta a senha não confirmada', async () => {
+      const local = { ...usuario, senhaHash: 'hash', googleId: null };
+      prisma.user.findUnique.mockResolvedValue(null);
+      prisma.user.upsert.mockResolvedValue({ ...local, googleId: 'g-1' });
+
+      const result = await service.loginWithGoogle('id-token');
+
+      expect(prisma.user.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          update: { googleId: 'g-1', senhaHash: null },
+        }),
+      );
+      expect(result.user).toEqual(usuario);
+    });
+
+    it('usa a conta já vinculada pelo google_id mesmo se o e-mail mudou', async () => {
+      prisma.user.findUnique.mockResolvedValue({
+        ...usuario,
+        email: 'antigo@gmail.com',
+        googleId: 'g-1',
+      });
+
+      const result = await service.loginWithGoogle('id-token');
+
+      expect(prisma.user.findUnique).toHaveBeenCalledWith({
+        where: { googleId: 'g-1' },
+      });
+      expect(prisma.user.upsert).not.toHaveBeenCalled();
+      expect(result.user.id).toBe(7);
+    });
+
+    it('rejeita token inválido sem tocar no banco', async () => {
+      verifyGoogle.mockRejectedValue(new UnauthorizedException());
+
+      await expect(service.loginWithGoogle('ruim')).rejects.toBeInstanceOf(
+        UnauthorizedException,
+      );
+      expect(prisma.user.findUnique).not.toHaveBeenCalled();
+      expect(prisma.user.upsert).not.toHaveBeenCalled();
+    });
   });
 
   describe('login', () => {
