@@ -44,6 +44,20 @@ export class AuthService {
     };
   }
 
+  async me(id: number) {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      select: { id: true, nome: true, email: true, role: true },
+    });
+
+    // Token ainda válido, mas a conta foi removida.
+    if (!user) {
+      throw new UnauthorizedException('Token inválido ou expirado');
+    }
+
+    return user;
+  }
+
   async register(dto: RegisterDto) {
     const existingUser = await this.prisma.user.findUnique({
       where: { email: dto.email },

@@ -261,11 +261,14 @@ volumes:
 
 Documentação interativa (Swagger): `http://localhost:3000/docs`. Erros sempre no formato `{ statusCode, message, error }`.
 
+Rotas protegidas: `@UseGuards(JwtAuthGuard)` + `@CurrentUser()` (em `src/auth/jwt-auth.guard.ts`), com o cabeçalho `Authorization: Bearer <accessToken>`.
+
 | Método | Rota | Descrição | RF |
 |---|---|---|---|
 | GET | `/health` | Verifica se a API está no ar | — |
 | POST | `/auth/register` | Cadastro local de usuário | RF01 |
 | POST | `/auth/login` | Login local (e-mail/senha) | RF01, RF03 |
+| GET | `/auth/me` | Usuário autenticado (Bearer token) | RF03, RF05 |
 | GET | `/auth/google` | Inicia fluxo OAuth com Google | RF02 |
 | GET | `/auth/google/callback` | Callback do Google, emite JWT | RF02, RF03 |
 | POST | `/auth/logout` | Invalida sessão/token (se aplicável) | RF04 |

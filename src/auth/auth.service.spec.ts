@@ -69,6 +69,25 @@ describe('AuthService', () => {
     });
   });
 
+  describe('me', () => {
+    it('retorna os dados públicos do usuário do token', async () => {
+      const publico = { id: 7, nome: 'Ana', email: 'ana@x.com', role: 'USER' };
+      prisma.user.findUnique.mockResolvedValue(publico);
+
+      await expect(service.me(7)).resolves.toEqual(publico);
+      expect(prisma.user.findUnique).toHaveBeenCalledWith({
+        where: { id: 7 },
+        select: { id: true, nome: true, email: true, role: true },
+      });
+    });
+
+    it('rejeita com 401 quando a conta não existe mais', async () => {
+      prisma.user.findUnique.mockResolvedValue(null);
+
+      await expect(service.me(7)).rejects.toBeInstanceOf(UnauthorizedException);
+    });
+  });
+
   describe('register', () => {
     it('armazena o hash da senha, não a senha original', async () => {
       const senha = 'senha-segura-123';
