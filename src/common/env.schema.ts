@@ -3,7 +3,11 @@ import { z } from 'zod';
 export const envSchema = z.object({
   DATABASE_URL: z.url(),
   JWT_SECRET: z.string().min(1, 'JWT_SECRET é obrigatório'),
-  JWT_EXPIRES_IN: z.string().min(1).default('1d'),
+  // Exige unidade: sem ela, a lib de JWT lê "3600" como 3600 milissegundos.
+  JWT_EXPIRES_IN: z
+    .string()
+    .regex(/^\d+[smhd]$/, 'use número + unidade (s, m, h, d), ex.: 15m, 1d')
+    .default('1d'),
   GOOGLE_CLIENT_ID: z.string().optional(),
   PORT: z.coerce.number().int().positive().default(3000),
   // Origens liberadas no CORS, separadas por vírgula.

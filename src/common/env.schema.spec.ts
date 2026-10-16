@@ -22,6 +22,15 @@ describe('validateEnv', () => {
     expect(() => validateEnv(rest)).toThrow(/JWT_SECRET/);
   });
 
+  it.each(['3600', '1 dia', ''])(
+    'rejeita JWT_EXPIRES_IN sem unidade válida: %j',
+    (JWT_EXPIRES_IN) => {
+      expect(() => validateEnv({ ...validEnv, JWT_EXPIRES_IN })).toThrow(
+        /JWT_EXPIRES_IN/,
+      );
+    },
+  );
+
   it('aceita configuração válida e a retorna tipada', () => {
     const result = validateEnv(validEnv);
 
