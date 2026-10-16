@@ -98,6 +98,10 @@ projects
 ├── estado_blocos (JSON — snapshot do estado dos blocos renderizados)
 ├── criado_em
 ├── atualizado_em
+
+revoked_tokens
+├── jti (PK — identificador único do token JWT revogado)
+├── expira_em (data de expiração original do token; usada na limpeza oportunista)
 ```
 
 ---
@@ -111,7 +115,7 @@ projects
 | Linguagem | TypeScript |
 | ORM | Prisma |
 | Banco de dados | PostgreSQL |
-| Autenticação | JWT (`@nestjs/jwt`) + bcrypt; login local validado direto no `AuthService`; Google: ID token validado com `google-auth-library` (`src/auth/google-verifier.ts`) |
+| Autenticação | JWT (`@nestjs/jwt`) + bcrypt; login local validado direto no `AuthService`; Google: ID token validado com `google-auth-library` (`src/auth/google-verifier.ts`); logout via denylist de `jti` revogados (`src/auth/token-denylist.service.ts`), com limpeza oportunista dos registros expirados |
 | Validação de dados | class-validator / Zod |
 | Testes unitários | Vitest |
 | Testes de integração | Vitest + Supertest |
@@ -269,7 +273,7 @@ Rotas protegidas: `@UseGuards(JwtAuthGuard)` + `@CurrentUser()` (em `src/auth/jw
 | POST | `/auth/login` | Login local (e-mail/senha) | RF01, RF03 |
 | GET | `/auth/me` | Usuário autenticado (Bearer token) | RF03, RF05 |
 | POST | `/auth/google` | Login com ID token do Google Identity Services; cria ou vincula a conta e emite JWT | RF02, RF03 |
-| POST | `/auth/logout` | Invalida sessão/token (se aplicável) | RF04 |
+| POST | `/auth/logout` | Revoga o token atual (denylist por `jti`, até sua expiração) | RF04 |
 | GET | `/functions` | Lista todas as funções do catálogo | RF06 |
 | GET | `/functions/:id` | Detalhe de uma função (código + descrição + bloco) | RF07, RF08 |
 | POST | `/functions` | Cria nova função (admin) | RF21 |

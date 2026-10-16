@@ -4,6 +4,7 @@ import * as bcrypt from 'bcrypt';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AuthService } from './auth.service.js';
+import { TokenDenylistService } from './token-denylist.service.js';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -16,6 +17,7 @@ describe('AuthService', () => {
     },
   };
   const jwt = new JwtService({ secret: 'test-secret' });
+  const denylist = { revoke: vi.fn() };
   const verifyGoogle = vi.fn();
 
   beforeEach(() => {
@@ -23,6 +25,7 @@ describe('AuthService', () => {
     service = new AuthService(
       prisma as unknown as PrismaService,
       jwt,
+      denylist as unknown as TokenDenylistService,
       verifyGoogle,
     );
   });
@@ -222,6 +225,19 @@ describe('AuthService', () => {
       ).rejects.toBeInstanceOf(ConflictException);
 
       expect(prisma.user.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('logout', () => {
+    it('revoga o jti do token com a data de expiração convertida de segundos para Date', async () => {
+      const exp = 1_700_000_000;
+
+      await service.logout('jti-123', exp);
+
+      expect(denylist.revoke).toHaveBeenCalledWith(
+        'jti-123',
+        new Date(exp * 1000),
+      );
     });
   });
 });

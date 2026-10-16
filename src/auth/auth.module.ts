@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtModule, type JwtSignOptions } from '@nestjs/jwt';
 import type { Env } from '../common/env.schema.js';
@@ -6,7 +6,9 @@ import { PrismaModule } from '../prisma/prisma.module.js';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
 import { googleVerifierProvider } from './google-verifier.js';
+import { TokenDenylistService } from './token-denylist.service.js';
 
+@Global()
 @Module({
   imports: [
     PrismaModule,
@@ -25,6 +27,7 @@ import { googleVerifierProvider } from './google-verifier.js';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, googleVerifierProvider],
+  providers: [AuthService, googleVerifierProvider, TokenDenylistService],
+  exports: [TokenDenylistService],
 })
 export class AuthModule {}

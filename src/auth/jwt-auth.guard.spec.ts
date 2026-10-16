@@ -1,25 +1,24 @@
-import {
-  Controller,
-  type ExecutionContext,
-  Get,
-  type INestApplication,
-  UnauthorizedException,
-  UseGuards,
-} from '@nestjs/common';
+import { type ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { Test } from '@nestjs/testing';
-import request from 'supertest';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { AppModule } from '../app.module.js';
-import {
-  CurrentUser,
-  JwtAuthGuard,
-  type JwtPayload,
-} from './jwt-auth.guard.js';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { JwtAuthGuard } from './jwt-auth.guard.js';
+import { TokenDenylistService } from './token-denylist.service.js';
 
 describe('JwtAuthGuard', () => {
   const jwt = new JwtService({ secret: 'test-secret' });
-  const guard = new JwtAuthGuard(jwt);
+  const denylist = {
+    isRevoked: vi.fn().mockResolvedValue(false),
+    purgeExpired: vi.fn(),
+  };
+  const guard = new JwtAuthGuard(
+    jwt,
+    denylist as unknown as TokenDenylistService,
+  );
+
+  beforeEach(() => {
+    denylist.isRevoked.mockClear();
+    denylist.purgeExpired.mockClear();
+  });
 
   const contextWith = (authorization?: string) => {
     const request: { headers: { authorization?: string }; user?: unknown } = {
@@ -34,7 +33,8 @@ describe('JwtAuthGuard', () => {
   it.each(['Bearer', 'bearer'])(
     'aceita token válido (%s) e expõe o payload em request.user',
     async (scheme) => {
-      const token = jwt.sign({ sub: 7, role: 'USER' });
+      denylist.isRevoked.mockResolvedValueOnce(false);
+      const token = jwt.sign({ sub: 7, role: 'USER' }, { jwtid: 'jti-1' });
       const { request, context } = contextWith(`${scheme} ${token}`);
 
       await expect(guard.canActivate(context)).resolves.toBe(true);
@@ -60,42 +60,35 @@ describe('JwtAuthGuard', () => {
     );
     expect(request.user).toBeUndefined();
   });
-});
 
-// Controller fora do AuthModule, como os de outros módulos (ex.: projects).
-@Controller('protegido')
-class ProtegidoController {
-  @Get()
-  @UseGuards(JwtAuthGuard)
-  get(@CurrentUser() user: JwtPayload) {
-    return { sub: user.sub };
-  }
-}
+  it('recusa um jti revogado com 401', async () => {
+    denylist.isRevoked.mockResolvedValueOnce(true);
+    const token = jwt.sign({ sub: 7, role: 'USER' }, { jwtid: 'jti-revogado' });
+    const { request, context } = contextWith(`Bearer ${token}`);
 
-describe('JwtAuthGuard reutilizado fora do AuthModule', () => {
-  let app: INestApplication;
-
-  beforeAll(async () => {
-    const moduleRef = await Test.createTestingModule({
-      imports: [AppModule],
-      controllers: [ProtegidoController],
-    }).compile();
-    app = moduleRef.createNestApplication({ logger: false });
-    await app.init();
+    await expect(guard.canActivate(context)).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+    expect(denylist.isRevoked).toHaveBeenCalledWith('jti-revogado');
+    expect(request.user).toBeUndefined();
   });
 
-  afterAll(() => app.close());
+  it('aciona a limpeza oportunista de registros expirados a cada verificação', async () => {
+    denylist.isRevoked.mockResolvedValueOnce(false);
+    const token = jwt.sign({ sub: 7, role: 'USER' }, { jwtid: 'jti-2' });
+    const { context } = contextWith(`Bearer ${token}`);
 
-  it('libera com token válido e injeta o usuário via @CurrentUser', async () => {
-    const token = app.get(JwtService).sign({ sub: 7, role: 'USER' });
+    await guard.canActivate(context);
 
-    await request(app.getHttpServer())
-      .get('/protegido')
-      .set('Authorization', `Bearer ${token}`)
-      .expect(200, { sub: 7 });
+    expect(denylist.purgeExpired).toHaveBeenCalled();
   });
 
-  it('bloqueia sem token', async () => {
-    await request(app.getHttpServer()).get('/protegido').expect(401);
+  it('aceita token sem jti (emitido antes da denylist existir) sem consultar a denylist', async () => {
+    const token = jwt.sign({ sub: 7, role: 'USER' });
+    const { request, context } = contextWith(`Bearer ${token}`);
+
+    await expect(guard.canActivate(context)).resolves.toBe(true);
+    expect(denylist.isRevoked).not.toHaveBeenCalled();
+    expect(request.user).toMatchObject({ sub: 7, role: 'USER' });
   });
 });

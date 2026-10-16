@@ -10,6 +10,7 @@ describe('AuthController', () => {
     login: vi.fn(),
     loginWithGoogle: vi.fn(),
     me: vi.fn(),
+    logout: vi.fn(),
   };
 
   beforeEach(() => {
@@ -45,10 +46,27 @@ describe('AuthController', () => {
       const usuario = { id: 7, nome: 'Ana', email: 'ana@x.com', role: 'USER' };
       authService.me.mockResolvedValue(usuario);
 
-      await expect(controller.me({ sub: 7, role: 'USER' })).resolves.toEqual(
-        usuario,
-      );
+      const payload = { sub: 7, role: 'USER', jti: 'jti-1', exp: 123 } as const;
+
+      await expect(controller.me(payload)).resolves.toEqual(usuario);
       expect(authService.me).toHaveBeenCalledWith(7);
+    });
+  });
+
+  describe('logout', () => {
+    it('revoga o jti e a expiração do token atual', async () => {
+      authService.logout.mockResolvedValue(undefined);
+
+      const payload = {
+        sub: 7,
+        role: 'USER',
+        jti: 'jti-atual',
+        exp: 1_700_000_000,
+      } as const;
+
+      await controller.logout(payload);
+
+      expect(authService.logout).toHaveBeenCalledWith('jti-atual', 1_700_000_000);
     });
   });
 
