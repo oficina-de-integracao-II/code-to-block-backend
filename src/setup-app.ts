@@ -16,7 +16,7 @@ export function setupApp(app: INestApplication) {
 
   const document = SwaggerModule.createDocument(
     app,
-    new DocumentBuilder().setTitle('Code to Block API').build(),
+    new DocumentBuilder().setTitle('Code to Block API').addBearerAuth().build(),
   );
   SwaggerModule.setup('docs', app, document);
 }

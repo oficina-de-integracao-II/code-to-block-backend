@@ -1,33 +1,40 @@
 import {
   ConflictException,
+  Inject,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import type { User } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
-import type { Role } from '../generated/prisma/client.js';
 import type { LoginDto } from './dto/login.dto.js';
 import type { RegisterDto } from './dto/register.dto.js';
+import { GOOGLE_VERIFIER, type GoogleVerifier } from './google-verifier.js';
 
 // Hash fictício (custo 12): comparado quando o e-mail não existe, para o
 // tempo de resposta não revelar se a conta existe.
 const HASH_FICTICIO =
   '$2b$12$ghDE7UBmoOMWD5H.iQcS9eyHNB8w/m.Mf6nEJlB3pjX2661wZ.ytK';
 
-type PublicUser = { id: number; nome: string; email: string; role: Role };
-
 @Injectable()
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
+    @Inject(GOOGLE_VERIFIER) private readonly verifyGoogle: GoogleVerifier,
   ) {}
 
-  private async buildAuthResponse(user: PublicUser) {
+  // Mesma resposta para login local, login Google e cadastro.
+  private async buildAuthResponse(user: User) {
     return {
       accessToken: await this.jwt.signAsync({ sub: user.id, role: user.role }),
-      user,
+      user: {
+        id: user.id,
+        nome: user.nome,
+        email: user.email,
+        role: user.role,
+      },
     };
   }
 
@@ -43,12 +50,38 @@ export class AuthService {
       throw new UnauthorizedException('Credenciais inválidas');
     }
 
-    return this.buildAuthResponse({
-      id: user.id,
-      nome: user.nome,
-      email: user.email,
-      role: user.role,
+    return this.buildAuthResponse(user);
+  }
+
+  async loginWithGoogle(idToken: string) {
+    const { googleId, email, nome } = await this.verifyGoogle(idToken);
+
+    // Busca pelo googleId primeiro: o e-mail da conta Google pode mudar.
+    const user =
+      (await this.prisma.user.findUnique({ where: { googleId } })) ??
+      (await this.prisma.user.upsert({
+        where: { email },
+        // O cadastro local não confirma e-mail: a senha pode ter sido criada
+        // por outra pessoa. O Google provou o dono, então ela é descartada.
+        update: { googleId, senhaHash: null },
+        create: { email, nome, googleId },
+      }));
+
+    return this.buildAuthResponse(user);
+  }
+
+  async me(id: number) {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      select: { id: true, nome: true, email: true, role: true },
     });
+
+    // Token ainda válido, mas a conta foi removida.
+    if (!user) {
+      throw new UnauthorizedException('Token inválido ou expirado');
+    }
+
+    return user;
   }
 
   async register(dto: RegisterDto) {
@@ -67,12 +100,6 @@ export class AuthService {
         nome: dto.nome,
         email: dto.email,
         senhaHash,
-      },
-      select: {
-        id: true,
-        nome: true,
-        email: true,
-        role: true,
       },
     });
 

@@ -111,7 +111,7 @@ projects
 | Linguagem | TypeScript |
 | ORM | Prisma |
 | Banco de dados | PostgreSQL |
-| Autenticação | JWT (`@nestjs/jwt`) + bcrypt; login local validado direto no `AuthService` (Google: BE-11) |
+| Autenticação | JWT (`@nestjs/jwt`) + bcrypt; login local validado direto no `AuthService`; Google: ID token validado com `google-auth-library` (`src/auth/google-verifier.ts`) |
 | Validação de dados | class-validator / Zod |
 | Testes unitários | Vitest |
 | Testes de integração | Vitest + Supertest |
@@ -131,7 +131,6 @@ backend/
 │   │   ├── auth.module.ts
 │   │   ├── auth.controller.ts
 │   │   ├── auth.service.ts
-│   │   ├── strategies/          # google.strategy.ts, jwt.strategy.ts (se adotados em BE-10/BE-11)
 │   │   └── dto/
 │   ├── functions/
 │   │   ├── functions.module.ts
@@ -168,7 +167,7 @@ backend/
 ### Pré-requisitos
 - Node.js 20+
 - Docker e Docker Compose (para banco local)
-- Credenciais OAuth 2.0 do Google Console (Client ID e Secret)
+- Client ID OAuth 2.0 do Google Console (o mesmo usado pelo frontend; não precisa de Client Secret)
 
 ### Passos
 
@@ -225,7 +224,7 @@ PORT=3000
 CORS_ORIGIN=http://localhost:5173
 ```
 
-As variáveis são validadas na inicialização (Zod, em `src/common/env.schema.ts`): a aplicação falha com uma mensagem clara caso `DATABASE_URL` ou `JWT_SECRET` estejam ausentes. `GOOGLE_CLIENT_SECRET` e `GOOGLE_CALLBACK_URL` serão adicionadas quando o login com Google for implementado (BE-11).
+As variáveis são validadas na inicialização (Zod, em `src/common/env.schema.ts`): a aplicação falha com uma mensagem clara caso `DATABASE_URL` ou `JWT_SECRET` estejam ausentes. O login com Google usa só `GOOGLE_CLIENT_ID` (audiência do ID token); sem ele, `POST /auth/google` responde 500 em vez de aceitar token de qualquer app.
 
 Os testes de integração usam `TEST_DATABASE_URL` quando definida. No CI, ela aponta para
 um serviço PostgreSQL efêmero do GitHub Actions; localmente, na ausência dessa variável,
@@ -261,13 +260,15 @@ volumes:
 
 Documentação interativa (Swagger): `http://localhost:3000/docs`. Erros sempre no formato `{ statusCode, message, error }`.
 
+Rotas protegidas: `@UseGuards(JwtAuthGuard)` + `@CurrentUser()` (em `src/auth/jwt-auth.guard.ts`), com o cabeçalho `Authorization: Bearer <accessToken>`.
+
 | Método | Rota | Descrição | RF |
 |---|---|---|---|
 | GET | `/health` | Verifica se a API está no ar | — |
 | POST | `/auth/register` | Cadastro local de usuário | RF01 |
 | POST | `/auth/login` | Login local (e-mail/senha) | RF01, RF03 |
-| GET | `/auth/google` | Inicia fluxo OAuth com Google | RF02 |
-| GET | `/auth/google/callback` | Callback do Google, emite JWT | RF02, RF03 |
+| GET | `/auth/me` | Usuário autenticado (Bearer token) | RF03, RF05 |
+| POST | `/auth/google` | Login com ID token do Google Identity Services; cria ou vincula a conta e emite JWT | RF02, RF03 |
 | POST | `/auth/logout` | Invalida sessão/token (se aplicável) | RF04 |
 | GET | `/functions` | Lista todas as funções do catálogo | RF06 |
 | GET | `/functions/:id` | Detalhe de uma função (código + descrição + bloco) | RF07, RF08 |
@@ -288,7 +289,7 @@ Documentação interativa (Swagger): `http://localhost:3000/docs`. Erros sempre 
 |---|---|---|
 | Unitário | Regras de negócio dos services (Auth, Functions, Projects) com mocks de repositório | Vitest |
 | Integração | Endpoints reais da API contra banco de teste efêmero | Vitest + Supertest + Testcontainers |
-| Auth/OAuth | Fluxo Google mockado (stub do provedor, sem chamadas reais em CI) | Vitest (mocks de estratégia Passport) |
+| Auth/OAuth | Fluxo Google mockado (stub do provedor, sem chamadas reais em CI) | Vitest (verificador do Google substituído por stub) |
 | Contrato | Validação de payloads de entrada/saída (DTOs) | class-validator + testes de schema |
 
 **Meta de cobertura:** 70–80% nos módulos `auth/` e `functions/`, por concentrarem regras de negócio e segurança mais sensíveis.
@@ -301,7 +302,7 @@ lint → build → testes unitários → subir banco de teste (Testcontainers/se
 
 ### Onde colocar cada tipo de teste
 
-- **Unitário:** arquivo `*.spec.ts` ao lado do código testado (ex.: `src/auth/auth.service.ts` → `src/auth/auth.service.spec.ts`). Roda com `npm run test` / `npm run test:cov`, sem Docker. Mocke dependências externas (repositórios Prisma, serviços HTTP, estratégias Passport) com `vi.fn()`/`vi.mock()` do Vitest ou providers fake no `Test.createTestingModule`, para o teste não depender de rede ou banco.
+- **Unitário:** arquivo `*.spec.ts` ao lado do código testado (ex.: `src/auth/auth.service.ts` → `src/auth/auth.service.spec.ts`). Roda com `npm run test` / `npm run test:cov`, sem Docker. Mocke dependências externas (repositórios Prisma, serviços HTTP, verificador do Google) com `vi.fn()`/`vi.mock()` do Vitest ou providers fake no `Test.createTestingModule`, para o teste não depender de rede ou banco.
 - **Integração:** arquivo `*.spec.ts` em `test/integration/`. Roda com `npm run test:integration`, que sobe um PostgreSQL efêmero via Testcontainers e aplica as migrations do Prisma (ver `test/integration/setup.ts`). Use `getTestDatabase()` para obter o `PrismaClient` conectado ao container e `cleanDatabase()` no `afterEach` para limpar as tabelas entre testes do mesmo arquivo. Para testar endpoints HTTP reais, suba a aplicação Nest com `Test.createTestingModule` + `setupApp()` e bata nela com `supertest` (veja `test/integration/health.spec.ts`).
 - **Contrato/DTO:** valide payloads de entrada/saída com `class-validator` nos próprios testes unitários do controller, sem precisar de banco.
 

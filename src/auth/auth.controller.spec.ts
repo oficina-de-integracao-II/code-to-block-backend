@@ -8,6 +8,8 @@ describe('AuthController', () => {
   const authService = {
     register: vi.fn(),
     login: vi.fn(),
+    loginWithGoogle: vi.fn(),
+    me: vi.fn(),
   };
 
   beforeEach(() => {
@@ -23,6 +25,30 @@ describe('AuthController', () => {
 
       await expect(controller.login(dto)).resolves.toEqual(resposta);
       expect(authService.login).toHaveBeenCalledWith(dto);
+    });
+  });
+
+  describe('loginWithGoogle', () => {
+    it('encaminha o idToken ao AuthService', async () => {
+      const resposta = { accessToken: 'token', user: { id: 1 } };
+      authService.loginWithGoogle.mockResolvedValue(resposta);
+
+      await expect(
+        controller.loginWithGoogle({ idToken: 'id-token' }),
+      ).resolves.toEqual(resposta);
+      expect(authService.loginWithGoogle).toHaveBeenCalledWith('id-token');
+    });
+  });
+
+  describe('me', () => {
+    it('busca o usuário pelo sub do token', async () => {
+      const usuario = { id: 7, nome: 'Ana', email: 'ana@x.com', role: 'USER' };
+      authService.me.mockResolvedValue(usuario);
+
+      await expect(controller.me({ sub: 7, role: 'USER' })).resolves.toEqual(
+        usuario,
+      );
+      expect(authService.me).toHaveBeenCalledWith(7);
     });
   });
 
