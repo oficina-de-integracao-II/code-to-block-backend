@@ -5,6 +5,7 @@ import type { Env } from '../common/env.schema.js';
 import { PrismaModule } from '../prisma/prisma.module.js';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
+import { googleVerifierProvider } from './google-verifier.js';
 
 @Module({
   imports: [
@@ -24,6 +25,6 @@ import { AuthService } from './auth.service.js';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService],
+  providers: [AuthService, googleVerifierProvider],
 })
 export class AuthModule {}

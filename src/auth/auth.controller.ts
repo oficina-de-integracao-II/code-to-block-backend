@@ -14,6 +14,7 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { AuthService } from './auth.service.js';
+import { GoogleLoginDto } from './dto/google-login.dto.js';
 import { LoginDto } from './dto/login.dto.js';
 import { RegisterDto } from './dto/register.dto.js';
 import {
@@ -39,6 +40,16 @@ export class AuthController {
   @ApiUnauthorizedResponse({ description: 'Credenciais inválidas' })
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
+  }
+
+  @Post('google')
+  @HttpCode(200)
+  @ApiOkResponse({
+    description: 'Login Google realizado; retorna o accessToken',
+  })
+  @ApiUnauthorizedResponse({ description: 'ID token do Google inválido' })
+  loginWithGoogle(@Body() dto: GoogleLoginDto) {
+    return this.authService.loginWithGoogle(dto.idToken);
   }
 
   @Get('me')
