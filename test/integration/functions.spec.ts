@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
@@ -12,10 +13,12 @@ import {
 describe('catálogo de funções (integração com banco real)', () => {
   let app: INestApplication;
   let prisma: PrismaClient;
+  let databaseUrl: string;
 
   beforeAll(async () => {
     const db = await getTestDatabase();
     prisma = db.prisma;
+    databaseUrl = db.url;
 
     process.env.DATABASE_URL = db.url;
     process.env.JWT_SECRET ??= 'integration-test-secret';
@@ -59,6 +62,47 @@ describe('catálogo de funções (integração com banco real)', () => {
   }
 
   describe('GET /functions', () => {
+    it('retorna as seis funções criadas pelo seed', async () => {
+      execFileSync('npx', ['prisma', 'db', 'seed'], {
+        cwd: process.cwd(),
+        env: { ...process.env, DATABASE_URL: databaseUrl },
+        stdio: 'pipe',
+      });
+
+      const res = await request(app.getHttpServer())
+        .get('/functions')
+        .expect(200);
+
+      expect(res.body).toHaveLength(6);
+      expect(res.body.map((fn: { nome: string }) => fn.nome)).toEqual([
+        'Andar',
+        'ParaFrente',
+        'ParaTras',
+        'VireEsquerda',
+        'VireDireita',
+        'Pare',
+      ]);
+    });
+
+    it('mantém seis funções ao executar o seed duas vezes', async () => {
+      execFileSync('npx', ['prisma', 'db', 'seed'], {
+        cwd: process.cwd(),
+        env: { ...process.env, DATABASE_URL: databaseUrl },
+        stdio: 'pipe',
+      });
+      execFileSync('npx', ['prisma', 'db', 'seed'], {
+        cwd: process.cwd(),
+        env: { ...process.env, DATABASE_URL: databaseUrl },
+        stdio: 'pipe',
+      });
+
+      const res = await request(app.getHttpServer())
+        .get('/functions')
+        .expect(200);
+
+      expect(res.body).toHaveLength(6);
+    });
+
     it('retorna 200 com as funções do catálogo', async () => {
       const a = await criarFuncao('piscar_led', { pino: 13 });
       const b = await criarFuncao('ler_sensor');
@@ -121,9 +165,7 @@ describe('catálogo de funções (integração com banco real)', () => {
     it.each(['abc', '0', '99999999999'])(
       'retorna 400 para id inválido (%s)',
       async (id) => {
-        await request(app.getHttpServer())
-          .get(`/functions/${id}`)
-          .expect(400);
+        await request(app.getHttpServer()).get(`/functions/${id}`).expect(400);
       },
     );
   });

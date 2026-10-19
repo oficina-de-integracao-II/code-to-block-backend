@@ -14,12 +14,68 @@ const prisma = new PrismaClient({
 
 const functions = [
   {
-    nome: 'piscar_led',
-    descricao: 'Pisca o LED embutido',
-    codigoArduino: 'digitalWrite(LED_BUILTIN, HIGH);',
+    nome: 'Andar',
+    descricao: 'Move o robô para frente.',
+    codigoArduino:
+      'void Andar() { digitalWrite(5, HIGH); digitalWrite(6, HIGH); }',
     blocoDefinicao: {
-      type: 'piscar_led',
-      message0: 'piscar LED',
+      type: 'Andar',
+      message0: 'Andar',
+      colour: 230,
+    },
+  },
+  {
+    nome: 'ParaFrente',
+    descricao: 'Move o robô para frente.',
+    codigoArduino:
+      'void ParaFrente() { digitalWrite(5, HIGH); digitalWrite(6, HIGH); }',
+    blocoDefinicao: {
+      type: 'ParaFrente',
+      message0: 'Para frente',
+      colour: 230,
+    },
+  },
+  {
+    nome: 'ParaTras',
+    descricao: 'Move o robô para trás.',
+    codigoArduino:
+      'void ParaTras() { digitalWrite(5, LOW); digitalWrite(6, LOW); }',
+    blocoDefinicao: {
+      type: 'ParaTras',
+      message0: 'Para trás',
+      colour: 230,
+    },
+  },
+  {
+    nome: 'VireEsquerda',
+    descricao: 'Gira o robô para a esquerda.',
+    codigoArduino:
+      'void VireEsquerda() { digitalWrite(5, LOW); digitalWrite(6, HIGH); }',
+    blocoDefinicao: {
+      type: 'VireEsquerda',
+      message0: 'Virar à esquerda',
+      colour: 230,
+    },
+  },
+  {
+    nome: 'VireDireita',
+    descricao: 'Gira o robô para a direita.',
+    codigoArduino:
+      'void VireDireita() { digitalWrite(5, HIGH); digitalWrite(6, LOW); }',
+    blocoDefinicao: {
+      type: 'VireDireita',
+      message0: 'Virar à direita',
+      colour: 230,
+    },
+  },
+  {
+    nome: 'Pare',
+    descricao: 'Para o robô.',
+    codigoArduino:
+      'void Pare() { digitalWrite(5, LOW); digitalWrite(6, LOW); }',
+    blocoDefinicao: {
+      type: 'Pare',
+      message0: 'Pare',
       colour: 230,
     },
   },

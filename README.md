@@ -189,8 +189,11 @@ cp .env.example .env
 # 5. Rodar migrations
 npx prisma migrate dev
 
-# 6. (Opcional) Popular catálogo de funções inicial (a partir de BE-15)
+# 6. (Opcional) Popular catálogo de funções inicial
 npx prisma db seed
+
+# O seed cria Andar, ParaFrente, ParaTras, VireEsquerda, VireDireita e Pare.
+# Ele é idempotente e pode ser executado novamente sem duplicar registros.
 
 # 7. Rodar em modo desenvolvimento
 npm run start:dev
