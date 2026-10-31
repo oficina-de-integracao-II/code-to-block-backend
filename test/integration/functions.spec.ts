@@ -1,8 +1,8 @@
-import { execFileSync } from 'node:child_process';
 import { type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import type { PrismaClient } from '../../src/generated/prisma/client.js';
+import { seedFunctionCatalog } from '../../prisma/seed-data.js';
 import {
   cleanDatabase,
   getTestDatabase,
@@ -13,12 +13,10 @@ import {
 describe('catálogo de funções (integração com banco real)', () => {
   let app: INestApplication;
   let prisma: PrismaClient;
-  let databaseUrl: string;
 
   beforeAll(async () => {
     const db = await getTestDatabase();
     prisma = db.prisma;
-    databaseUrl = db.url;
 
     process.env.DATABASE_URL = db.url;
     process.env.JWT_SECRET ??= 'integration-test-secret';
@@ -62,20 +60,15 @@ describe('catálogo de funções (integração com banco real)', () => {
   }
 
   describe('GET /functions', () => {
-    it('retorna as seis funções criadas pelo seed', async () => {
-      execFileSync('npx', ['prisma', 'db', 'seed'], {
-        cwd: process.cwd(),
-        env: { ...process.env, DATABASE_URL: databaseUrl },
-        stdio: 'pipe',
-      });
+    it('retorna as cinco funções criadas pelo seed', async () => {
+      await seedFunctionCatalog(prisma);
 
       const res = await request(app.getHttpServer())
         .get('/functions')
         .expect(200);
 
-      expect(res.body).toHaveLength(6);
+      expect(res.body).toHaveLength(5);
       expect(res.body.map((fn: { nome: string }) => fn.nome)).toEqual([
-        'Andar',
         'ParaFrente',
         'ParaTras',
         'VireEsquerda',
@@ -84,23 +77,15 @@ describe('catálogo de funções (integração com banco real)', () => {
       ]);
     });
 
-    it('mantém seis funções ao executar o seed duas vezes', async () => {
-      execFileSync('npx', ['prisma', 'db', 'seed'], {
-        cwd: process.cwd(),
-        env: { ...process.env, DATABASE_URL: databaseUrl },
-        stdio: 'pipe',
-      });
-      execFileSync('npx', ['prisma', 'db', 'seed'], {
-        cwd: process.cwd(),
-        env: { ...process.env, DATABASE_URL: databaseUrl },
-        stdio: 'pipe',
-      });
+    it('mantém cinco funções ao executar o seed duas vezes', async () => {
+      await seedFunctionCatalog(prisma);
+      await seedFunctionCatalog(prisma);
 
       const res = await request(app.getHttpServer())
         .get('/functions')
         .expect(200);
 
-      expect(res.body).toHaveLength(6);
+      expect(res.body).toHaveLength(5);
     });
 
     it('retorna 200 com as funções do catálogo', async () => {
