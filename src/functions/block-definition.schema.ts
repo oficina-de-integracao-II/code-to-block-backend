@@ -9,13 +9,11 @@ export const blockDefinitionSchema = z
     args0: z.array(blockArgumentSchema).optional(),
     colour: z.union([z.string(), z.number()]).optional(),
     inputsInline: z.boolean().optional(),
-    previousStatement: z
-      .union([z.string(), z.boolean(), z.null()])
-      .optional(),
+    previousStatement: z.union([z.string(), z.boolean(), z.null()]).optional(),
     nextStatement: z.union([z.string(), z.boolean(), z.null()]).optional(),
     output: z.union([z.string(), z.boolean(), z.null()]).optional(),
     tooltip: z.string().optional(),
-    helpUrl: z.string().url().optional(),
+    helpUrl: z.url().optional(),
   })
   .strict();
 
