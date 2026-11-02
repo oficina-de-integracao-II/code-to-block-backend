@@ -526,6 +526,7 @@ components:
           description: Identificador do tipo de bloco Blockly.
         message0:
           type: string
+          minLength: 1
           description: Texto principal exibido no bloco.
         args0:
           type: array
@@ -544,14 +545,17 @@ components:
           oneOf:
             - type: string
             - type: boolean
+            - type: 'null'
         nextStatement:
           oneOf:
             - type: string
             - type: boolean
+            - type: 'null'
         output:
           oneOf:
             - type: string
             - type: boolean
+            - type: 'null'
         tooltip:
           type: string
         helpUrl:
