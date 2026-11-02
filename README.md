@@ -192,7 +192,7 @@ npx prisma migrate dev
 # 6. (Opcional) Popular catálogo de funções inicial
 npx prisma db seed
 
-# O seed cria Andar, ParaFrente, ParaTras, VireEsquerda, VireDireita e Pare.
+# O seed cria ParaFrente, ParaTras, VireEsquerda, VireDireita e Pare.
 # Ele é idempotente e pode ser executado novamente sem duplicar registros.
 
 # 7. Rodar em modo desenvolvimento
