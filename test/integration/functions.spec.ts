@@ -2,6 +2,7 @@ import { type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import type { PrismaClient } from '../../src/generated/prisma/client.js';
+import { seedFunctionCatalog } from '../../prisma/seed-data.js';
 import {
   cleanDatabase,
   getTestDatabase,
@@ -59,6 +60,34 @@ describe('catálogo de funções (integração com banco real)', () => {
   }
 
   describe('GET /functions', () => {
+    it('retorna as cinco funções criadas pelo seed', async () => {
+      await seedFunctionCatalog(prisma);
+
+      const res = await request(app.getHttpServer())
+        .get('/functions')
+        .expect(200);
+
+      expect(res.body).toHaveLength(5);
+      expect(res.body.map((fn: { nome: string }) => fn.nome)).toEqual([
+        'ParaFrente',
+        'ParaTras',
+        'VireEsquerda',
+        'VireDireita',
+        'Pare',
+      ]);
+    });
+
+    it('mantém cinco funções ao executar o seed duas vezes', async () => {
+      await seedFunctionCatalog(prisma);
+      await seedFunctionCatalog(prisma);
+
+      const res = await request(app.getHttpServer())
+        .get('/functions')
+        .expect(200);
+
+      expect(res.body).toHaveLength(5);
+    });
+
     it('retorna 200 com as funções do catálogo', async () => {
       const a = await criarFuncao('piscar_led', { pino: 13 });
       const b = await criarFuncao('ler_sensor');
@@ -121,9 +150,7 @@ describe('catálogo de funções (integração com banco real)', () => {
     it.each(['abc', '0', '99999999999'])(
       'retorna 400 para id inválido (%s)',
       async (id) => {
-        await request(app.getHttpServer())
-          .get(`/functions/${id}`)
-          .expect(400);
+        await request(app.getHttpServer()).get(`/functions/${id}`).expect(400);
       },
     );
   });
