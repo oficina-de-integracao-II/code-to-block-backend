@@ -52,3 +52,11 @@ model Project {
   @@index([usuarioId])
   @@map("projects")
 }
+
+model RevokedToken {
+  jti      String   @id
+  expiraEm DateTime @map("expira_em")
+
+  @@index([expiraEm])
+  @@map("revoked_tokens")
+}
