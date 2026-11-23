@@ -3,6 +3,20 @@ import { validateBlockDefinition } from '../src/functions/block-definition.schem
 
 export const predefinedFunctions = [
   {
+    nome: 'Andar',
+    descricao: 'Move o robô para frente em velocidade moderada.',
+    codigoArduino: `
+      void Andar() {
+        analogWrite(5, 128);
+        analogWrite(6, 128);
+      }`,
+    blocoDefinicao: {
+      type: 'Andar',
+      message0: 'Andar',
+      colour: 230,
+    },
+  },
+  {
     nome: 'ParaFrente',
     descricao: 'Move o robô para frente.',
     codigoArduino: `

@@ -60,15 +60,16 @@ describe('catálogo de funções (integração com banco real)', () => {
   }
 
   describe('GET /functions', () => {
-    it('retorna as cinco funções criadas pelo seed', async () => {
+    it('retorna as seis funções criadas pelo seed', async () => {
       await seedFunctionCatalog(prisma);
 
       const res = await request(app.getHttpServer())
         .get('/functions')
         .expect(200);
 
-      expect(res.body).toHaveLength(5);
+      expect(res.body).toHaveLength(6);
       expect(res.body.map((fn: { nome: string }) => fn.nome)).toEqual([
+        'Andar',
         'ParaFrente',
         'ParaTras',
         'VireEsquerda',
@@ -77,7 +78,7 @@ describe('catálogo de funções (integração com banco real)', () => {
       ]);
     });
 
-    it('mantém cinco funções ao executar o seed duas vezes', async () => {
+    it('mantém seis funções ao executar o seed duas vezes', async () => {
       await seedFunctionCatalog(prisma);
       await seedFunctionCatalog(prisma);
 
@@ -85,7 +86,7 @@ describe('catálogo de funções (integração com banco real)', () => {
         .get('/functions')
         .expect(200);
 
-      expect(res.body).toHaveLength(5);
+      expect(res.body).toHaveLength(6);
     });
 
     it('retorna 200 com as funções do catálogo', async () => {
