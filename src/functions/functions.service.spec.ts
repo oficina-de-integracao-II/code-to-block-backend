@@ -1,6 +1,8 @@
-import { NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import type { FunctionWriteDto } from './dto/function-write.dto.js';
 import { FunctionsService } from './functions.service.js';
 
 describe('FunctionsService', () => {
@@ -10,8 +12,17 @@ describe('FunctionsService', () => {
     functionCatalog: {
       findMany: vi.fn(),
       findUnique: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
     },
   };
+
+  const prismaError = (code: string) =>
+    new Prisma.PrismaClientKnownRequestError('erro do banco', {
+      code,
+      clientVersion: 'test',
+    });
 
   const piscarLed = {
     id: 1,
@@ -72,6 +83,112 @@ describe('FunctionsService', () => {
       prisma.functionCatalog.findUnique.mockResolvedValue(null);
 
       await expect(service.findById(999)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe('create', () => {
+    const dto = {
+      nome: 'piscar_led',
+      descricao: 'Pisca o LED embutido',
+      codigoArduino: 'digitalWrite(LED_BUILTIN, HIGH);',
+      blocoDefinicao: { type: 'piscar_led', message0: 'piscar LED' },
+      parametros: { pino: 13 },
+    } satisfies FunctionWriteDto;
+
+    it('cria a função registrando quem a cadastrou', async () => {
+      prisma.functionCatalog.create.mockResolvedValue({ id: 1, ...dto });
+
+      await expect(service.create(dto, 7)).resolves.toEqual({ id: 1, ...dto });
+
+      const args = prisma.functionCatalog.create.mock.calls[0][0];
+      expect(args.data).toEqual({ ...dto, criadoPorId: 7 });
+      expect(args.select).not.toHaveProperty('criadoPorId');
+    });
+
+    it('grava parametros ausente como nulo no banco', async () => {
+      prisma.functionCatalog.create.mockResolvedValue({ id: 1 });
+
+      await service.create({ ...dto, parametros: undefined }, 7);
+
+      const args = prisma.functionCatalog.create.mock.calls[0][0];
+      expect(args.data.parametros).toBe(Prisma.DbNull);
+    });
+
+    it('lança ConflictException quando o nome já existe', async () => {
+      prisma.functionCatalog.create.mockRejectedValue(prismaError('P2002'));
+
+      await expect(service.create(dto, 7)).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+    });
+
+    it('repassa erros inesperados do banco', async () => {
+      const erro = new Error('conexão perdida');
+      prisma.functionCatalog.create.mockRejectedValue(erro);
+
+      await expect(service.create(dto, 7)).rejects.toBe(erro);
+    });
+
+    it('repassa erros do Prisma que não fazem parte do contrato', async () => {
+      const erro = prismaError('P2003');
+      prisma.functionCatalog.create.mockRejectedValue(erro);
+
+      await expect(service.create(dto, 7)).rejects.toBe(erro);
+    });
+  });
+
+  describe('update', () => {
+    const dto = {
+      nome: 'piscar_led',
+      descricao: 'Nova descrição',
+      codigoArduino: 'digitalWrite(LED_BUILTIN, LOW);',
+      blocoDefinicao: { type: 'piscar_led', message0: 'piscar LED' },
+      parametros: null,
+    } satisfies FunctionWriteDto;
+
+    it('substitui os campos da função pelo id', async () => {
+      prisma.functionCatalog.update.mockResolvedValue({ id: 1, ...dto });
+
+      await expect(service.update(1, dto)).resolves.toEqual({ id: 1, ...dto });
+
+      const args = prisma.functionCatalog.update.mock.calls[0][0];
+      expect(args.where).toEqual({ id: 1 });
+      expect(args.data).toEqual({ ...dto, parametros: Prisma.DbNull });
+    });
+
+    it('lança NotFoundException quando a função não existe', async () => {
+      prisma.functionCatalog.update.mockRejectedValue(prismaError('P2025'));
+
+      await expect(service.update(999, dto)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+    });
+
+    it('lança ConflictException ao renomear para um nome existente', async () => {
+      prisma.functionCatalog.update.mockRejectedValue(prismaError('P2002'));
+
+      await expect(service.update(1, dto)).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+    });
+  });
+
+  describe('remove', () => {
+    it('remove a função pelo id', async () => {
+      prisma.functionCatalog.delete.mockResolvedValue({ id: 1 });
+
+      await expect(service.remove(1)).resolves.toBeUndefined();
+      expect(prisma.functionCatalog.delete).toHaveBeenCalledWith({
+        where: { id: 1 },
+      });
+    });
+
+    it('lança NotFoundException quando a função não existe', async () => {
+      prisma.functionCatalog.delete.mockRejectedValue(prismaError('P2025'));
+
+      await expect(service.remove(999)).rejects.toBeInstanceOf(
         NotFoundException,
       );
     });

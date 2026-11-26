@@ -12,8 +12,8 @@ info:
     Decisões desta versão:
     - Login Google recebe um Google Identity Services ID token.
     - Login local e Google retornam accessToken e user.
-    - O catálogo de funções é somente leitura.
-    - Não há CRUD administrativo de funções.
+    - Leitura do catálogo de funções para qualquer usuário autenticado.
+    - Criação, edição e remoção de funções restritas ao perfil ADMIN (BE-16).
     - Os limites de tamanho dos payloads ainda serão definidos.
     - A definição Blockly é uma proposta inicial para revisão com o frontend.
 
@@ -192,6 +192,37 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+    post:
+      tags: [Functions]
+      operationId: createFunction
+      summary: Cria uma função no catálogo (ADMIN)
+      description: |
+        Restrito ao perfil ADMIN. O nome é único no catálogo e
+        blocoDefinicao é validado pelo schema Blockly (BE-14).
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FunctionWriteRequest'
+      responses:
+        '201':
+          description: Função criada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FunctionDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
   /functions/{id}:
     parameters:
       - $ref: '#/components/parameters/Id'
@@ -213,6 +244,58 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags: [Functions]
+      operationId: updateFunction
+      summary: Substitui os dados de uma função (ADMIN)
+      description: |
+        Restrito ao perfil ADMIN. Substitui todos os campos da função;
+        parametros ausente ou null limpa o valor salvo.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FunctionWriteRequest'
+      responses:
+        '200':
+          description: Função atualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FunctionDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+    delete:
+      tags: [Functions]
+      operationId: deleteFunction
+      summary: Remove uma função do catálogo (ADMIN)
+      description: Restrito ao perfil ADMIN.
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Função removida
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
 
@@ -400,6 +483,20 @@ components:
           schema:
             $ref: '#/components/schemas/ApiError'
 
+    Forbidden:
+      description: Usuário autenticado sem o perfil exigido pela rota
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+
+    Conflict:
+      description: Conflito com um recurso existente, como um nome duplicado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+
   schemas:
     RegisterRequest:
       type: object
@@ -499,6 +596,35 @@ components:
           type: string
         parametros:
           description: Parâmetros específicos da função, conforme o catálogo.
+          oneOf:
+            - type: object
+              additionalProperties: true
+            - type: array
+              items: {}
+            - type: string
+            - type: number
+            - type: boolean
+            - type: 'null'
+        blocoDefinicao:
+          $ref: '#/components/schemas/BlocklyBlockDefinition'
+
+    FunctionWriteRequest:
+      type: object
+      additionalProperties: false
+      required: [nome, descricao, codigoArduino, blocoDefinicao]
+      properties:
+        nome:
+          type: string
+          pattern: '^[A-Za-z_][A-Za-z0-9_]*$'
+          description: Nome chamado no editor, como Andar. Identificador C válido e único no catálogo.
+        descricao:
+          type: string
+          minLength: 1
+        codigoArduino:
+          type: string
+          minLength: 1
+        parametros:
+          description: Parâmetros específicos da função; ausente ou null limpa o valor.
           oneOf:
             - type: object
               additionalProperties: true

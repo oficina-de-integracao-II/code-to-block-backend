@@ -269,6 +269,10 @@ Documentação interativa (Swagger): `http://localhost:3000/docs`. Erros sempre 
 
 Rotas protegidas: `@UseGuards(JwtAuthGuard)` + `@CurrentUser()` (em `src/auth/jwt-auth.guard.ts`), com o cabeçalho `Authorization: Bearer <accessToken>`.
 
+Rotas restritas por perfil: `@UseGuards(JwtAuthGuard, RolesGuard)` + `@Roles('ADMIN')` (em `src/auth/roles.guard.ts`). Usuário autenticado sem o perfil recebe 403. O perfil vem do token, então quem for promovido a ADMIN precisa fazer login de novo. Não há endpoint para promover usuários; use o banco (ex.: `npx prisma studio` ou `UPDATE users SET role = 'ADMIN' WHERE email = '...'`).
+
+`POST /functions` e `PUT /functions/:id` recebem `{ nome, descricao, codigoArduino, blocoDefinicao, parametros? }`. O `nome` deve ser um identificador C (é o que se digita no editor, ex.: `Andar`) e é único (409 se repetido). O `blocoDefinicao` é validado pelo schema Blockly da BE-14 (400 com o motivo). O `PUT` substitui a função inteira.
+
 | Método | Rota | Descrição | RF |
 |---|---|---|---|
 | GET | `/health` | Verifica se a API está no ar | — |
