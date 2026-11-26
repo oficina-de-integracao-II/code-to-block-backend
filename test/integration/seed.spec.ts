@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import type { PrismaClient } from '../../src/generated/prisma/client.js';
+import { predefinedFunctions } from '../../prisma/seed-data.js';
 import {
   cleanDatabase,
   getTestDatabase,
@@ -36,28 +37,32 @@ describe('seed do catálogo de funções', () => {
   it('cria uma função válida e é idempotente', async () => {
     runSeed();
 
-    await expect(prisma.functionCatalog.count()).resolves.toBe(1);
+    await expect(prisma.functionCatalog.count()).resolves.toBe(
+      predefinedFunctions.length,
+    );
     await expect(
-      prisma.functionCatalog.findUnique({ where: { nome: 'piscar_led' } }),
+      prisma.functionCatalog.findUnique({ where: { nome: 'ParaFrente' } }),
     ).resolves.toMatchObject({
-      nome: 'piscar_led',
+      nome: 'ParaFrente',
       blocoDefinicao: {
-        type: 'piscar_led',
-        message0: 'piscar LED',
+        type: 'ParaFrente',
+        message0: 'Para frente',
         colour: 230,
       },
     });
 
     runSeed();
 
-    await expect(prisma.functionCatalog.count()).resolves.toBe(1);
+    await expect(prisma.functionCatalog.count()).resolves.toBe(
+      predefinedFunctions.length,
+    );
     await expect(
-      prisma.functionCatalog.findUnique({ where: { nome: 'piscar_led' } }),
+      prisma.functionCatalog.findUnique({ where: { nome: 'ParaFrente' } }),
     ).resolves.toMatchObject({
-      nome: 'piscar_led',
+      nome: 'ParaFrente',
       blocoDefinicao: {
-        type: 'piscar_led',
-        message0: 'piscar LED',
+        type: 'ParaFrente',
+        message0: 'Para frente',
         colour: 230,
       },
     });
