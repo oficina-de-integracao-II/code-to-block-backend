@@ -81,4 +81,21 @@ describe('seed do catálogo de funções', () => {
       prisma.functionCatalog.findUnique({ where: { nome: 'ParaFrente' } }),
     ).resolves.toMatchObject({ descricao: 'Editada pelo admin' });
   });
+
+  it('não recria função renomeada pelo admin que manteve o type do bloco', async () => {
+    runSeed();
+    await prisma.functionCatalog.update({
+      where: { nome: 'Andar' },
+      data: { nome: 'Correr' },
+    });
+
+    runSeed();
+
+    await expect(
+      prisma.functionCatalog.findUnique({ where: { nome: 'Andar' } }),
+    ).resolves.toBeNull();
+    await expect(prisma.functionCatalog.count()).resolves.toBe(
+      predefinedFunctions.length,
+    );
+  });
 });
