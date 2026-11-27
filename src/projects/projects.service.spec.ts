@@ -1,4 +1,6 @@
+import { UnauthorizedException } from '@nestjs/common';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { ProjectsService } from './projects.service.js';
 
@@ -40,6 +42,26 @@ describe('ProjectsService', () => {
 
       const args = prisma.project.create.mock.calls[0][0];
       expect(args.data.usuarioId).toBe(7);
+    });
+
+    it('responde 401 quando a conta do token foi removida', async () => {
+      prisma.project.create.mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError('erro do banco', {
+          code: 'P2003',
+          clientVersion: 'test',
+        }),
+      );
+
+      await expect(service.create(dto, 7)).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+
+    it('repassa erros inesperados do banco', async () => {
+      const erro = new Error('conexão perdida');
+      prisma.project.create.mockRejectedValue(erro);
+
+      await expect(service.create(dto, 7)).rejects.toBe(erro);
     });
 
     it('não devolve o dono do projeto na resposta', async () => {

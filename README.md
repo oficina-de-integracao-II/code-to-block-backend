@@ -265,7 +265,7 @@ volumes:
 
 ## Endpoints da API (visão geral)
 
-Documentação interativa (Swagger): `http://localhost:3000/docs`. Erros sempre no formato `{ statusCode, message, error }`.
+Documentação interativa (Swagger): `http://localhost:3000/docs`. Erros sempre no formato `{ statusCode, message, error }`. Em qualquer rota, corpo com mais de 500 níveis de objetos ou listas aninhados retorna 400 (`MAX_BODY_DEPTH`, em `src/common/max-body-depth.pipe.ts`), antes da validação; erros do body-parser mantêm o status 4xx (ex.: 415 para charset não suportado).
 
 Rotas protegidas: `@UseGuards(JwtAuthGuard)` + `@CurrentUser()` (em `src/auth/jwt-auth.guard.ts`), com o cabeçalho `Authorization: Bearer <accessToken>`.
 
@@ -288,7 +288,7 @@ Rotas protegidas: `@UseGuards(JwtAuthGuard)` + `@CurrentUser()` (em `src/auth/jw
 | PUT | `/projects/:id` | Atualiza um projeto existente | RF18 |
 | DELETE | `/projects/:id` | Remove um projeto | — |
 
-**Projetos:** `POST /projects` recebe `{ nome, codigoFonte, estadoBlocos }` e o dono é sempre o usuário do token (um `usuarioId` no corpo é ignorado). Limites por campo, definidos em `PROJECT_LIMITS` (`src/projects/dto/project-write.dto.ts`): `nome` até 100 caracteres, `codigoFonte` até 10.000 e `estadoBlocos` até 50.000 caracteres como JSON. Campo acima do limite retorna 400 indicando o campo; corpo da requisição acima de 100 kB retorna 413.
+**Projetos:** `POST /projects` recebe `{ nome, codigoFonte, estadoBlocos }` e o dono é sempre o usuário do token (um `usuarioId` no corpo é ignorado). Limites por campo, definidos em `PROJECT_LIMITS` (`src/projects/dto/project-write.dto.ts`): `nome` até 100 caracteres, `codigoFonte` até 10.000 e `estadoBlocos` até 50.000 caracteres como JSON. Campo acima do limite retorna 400 indicando o campo; corpo da requisição acima de 100 kB retorna 413. O limite de profundidade comporta cerca de 250 blocos encadeados no `estadoBlocos`. Nenhum campo aceita o caractere nulo (`\u0000`), e conta removida com token ainda válido recebe 401.
 
 ---
 

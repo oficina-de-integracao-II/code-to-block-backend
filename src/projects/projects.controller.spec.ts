@@ -92,6 +92,16 @@ describe('ProjectWriteDto', () => {
     ]);
   });
 
+  it.each([
+    ['nome', { nome: 'Meu\u0000robô' }],
+    ['codigoFonte', { codigoFonte: 'Andar();\u0000' }],
+    ['estadoBlocos', { estadoBlocos: { blocks: { id: 'b\u0000' } } }],
+  ])('rejeita caractere nulo em %s', async (campo, campos) => {
+    await expect(errosDe({ ...dtoValido, ...campos })).resolves.toEqual([
+      campo,
+    ]);
+  });
+
   it('aceita campos exatamente no limite', async () => {
     await expect(
       errosDe({

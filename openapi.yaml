@@ -15,6 +15,7 @@ info:
     - O catálogo de funções é somente leitura.
     - Não há CRUD administrativo de funções.
     - Projetos têm limite de tamanho por campo (400) e de corpo da requisição, 100 kB (413).
+    - Corpo com mais de 500 níveis de aninhamento retorna 400 em qualquer rota.
     - A definição Blockly é uma proposta inicial para revisão com o frontend.
 
 servers:
@@ -225,7 +226,8 @@ paths:
         O dono do projeto é determinado pelo token autenticado.
         Um campo usuarioId enviado pelo cliente é aceito e ignorado.
         Campo acima do limite retorna 400 indicando o campo; corpo acima
-        de 100 kB retorna 413.
+        de 100 kB retorna 413. Mais de 500 níveis de aninhamento ou o
+        caractere nulo (\u0000) em qualquer campo retornam 400.
       security:
         - bearerAuth: []
       requestBody:
@@ -579,7 +581,7 @@ components:
           maxLength: 10000
         estadoBlocos:
           type: object
-          description: Estado serializado dos blocos Blockly; no máximo 50000 caracteres como JSON.
+          description: Estado serializado dos blocos Blockly; no máximo 50000 caracteres como JSON e 500 níveis de aninhamento no corpo.
           additionalProperties: true
         usuarioId:
           description: Aceito e ignorado; o dono do projeto é sempre o usuário do token.

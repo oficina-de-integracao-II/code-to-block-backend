@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import type { PrismaClient } from '../../src/generated/prisma/client.js';
+import { MAX_BODY_DEPTH } from '../../src/common/max-body-depth.pipe.js';
 import { PROJECT_LIMITS } from '../../src/projects/dto/project-write.dto.js';
 import {
   cleanDatabase,
@@ -143,6 +144,79 @@ describe('POST /projects (integração)', () => {
       await expect(prisma.project.count()).resolves.toBe(0);
     },
   );
+
+  // Estado do Blockly com `n` blocos em sequência (cada um no `next` do outro).
+  function blocosEncadeados(n: number) {
+    let block: object = { type: 'Andar', id: 'b0' };
+    for (let i = 1; i < n; i++) {
+      block = { type: 'Andar', id: `b${i}`, next: { block } };
+    }
+
+    return { blocks: { languageVersion: 0, blocks: [block] } };
+  }
+
+  it('aceita 200 blocos encadeados', async () => {
+    const { header } = await authAs('ana@example.com');
+
+    await http()
+      .post('/projects')
+      .set('Authorization', header)
+      .send({ ...payload, estadoBlocos: blocosEncadeados(200) })
+      .expect(201);
+  });
+
+  it('retorna 400, e não 500, para estadoBlocos aninhado demais', async () => {
+    const { header } = await authAs('ana@example.com');
+    const listas = '['.repeat(2000) + ']'.repeat(2000);
+
+    const res = await http()
+      .post('/projects')
+      .set('Authorization', header)
+      .set('Content-Type', 'application/json')
+      .send(`{"nome":"x","codigoFonte":"","estadoBlocos":{"a":${listas}}}`)
+      .expect(400);
+
+    expect(res.body.message).toBe(
+      `Corpo da requisição excede a profundidade máxima de ${MAX_BODY_DEPTH} níveis`,
+    );
+    await expect(prisma.project.count()).resolves.toBe(0);
+  });
+
+  it('retorna 400 para caractere nulo no código', async () => {
+    const { header } = await authAs('ana@example.com');
+
+    await http()
+      .post('/projects')
+      .set('Authorization', header)
+      .send({ ...payload, codigoFonte: 'Andar();\u0000' })
+      .expect(400);
+
+    await expect(prisma.project.count()).resolves.toBe(0);
+  });
+
+  it('retorna 415 para charset não suportado', async () => {
+    const { header } = await authAs('ana@example.com');
+
+    await http()
+      .post('/projects')
+      .set('Authorization', header)
+      .set('Content-Type', 'application/json; charset=latin1')
+      .send('{}')
+      .expect(415);
+  });
+
+  it('retorna 401 quando a conta do token foi removida', async () => {
+    const { user, header } = await authAs('ana@example.com');
+    await prisma.user.delete({ where: { id: user.id } });
+
+    const res = await http()
+      .post('/projects')
+      .set('Authorization', header)
+      .send(payload)
+      .expect(401);
+
+    expect(res.body.message).toBe('Token inválido ou expirado');
+  });
 
   it('retorna 413 quando o corpo passa do limite do servidor', async () => {
     const { header } = await authAs('ana@example.com');

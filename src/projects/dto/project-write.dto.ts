@@ -6,6 +6,7 @@ import {
   MaxLength,
   ValidateBy,
 } from 'class-validator';
+import { NoNullChar } from '../../common/no-null-char.validator.js';
 import type { Prisma } from '../../generated/prisma/client.js';
 
 // Limites por campo, em caracteres. Para um projeto comum (texto ASCII),
@@ -39,14 +40,17 @@ export class ProjectWriteDto {
   // Vazio ou só espaços: o S05 pede "Escreva um nome para guardar o projeto".
   @Matches(/\S/, { message: 'nome não pode ficar em branco' })
   @MaxLength(PROJECT_LIMITS.nome)
+  @NoNullChar()
   nome!: string;
 
   @IsString()
   @MaxLength(PROJECT_LIMITS.codigoFonte)
+  @NoNullChar()
   codigoFonte!: string;
 
   @IsObject()
   @MaxJsonLength(PROJECT_LIMITS.estadoBlocos)
+  @NoNullChar()
   estadoBlocos!: Prisma.InputJsonObject;
 
   // Aceito e ignorado: o dono do projeto é sempre o usuário do token.

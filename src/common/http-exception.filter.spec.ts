@@ -51,6 +51,7 @@ describe('HttpExceptionFilter', () => {
     const erro = Object.assign(new Error('request entity too large'), {
       type: 'entity.too.large',
       status: 413,
+      expose: true,
     });
 
     expect(responder(erro)).toEqual({
@@ -61,6 +62,33 @@ describe('HttpExceptionFilter', () => {
         error: 'Payload Too Large',
       },
     });
+  });
+
+  it('mantém o status 4xx e a mensagem pública de outros erros do body-parser', () => {
+    const erro = Object.assign(new Error('unsupported charset "LATIN1"'), {
+      type: 'charset.unsupported',
+      status: 415,
+      expose: true,
+    });
+
+    expect(responder(erro)).toEqual({
+      status: 415,
+      body: {
+        statusCode: 415,
+        message: 'unsupported charset "LATIN1"',
+        error: 'Unsupported Media Type',
+      },
+    });
+  });
+
+  it('responde 500 para erro com type que não é público', () => {
+    const erro = Object.assign(new Error('detalhe interno'), {
+      type: 'stream.encoding.set',
+      status: 500,
+      expose: false,
+    });
+
+    expect(responder(erro).body.message).toBe('Internal Server Error');
   });
 
   it('responde 500 sem expor detalhes de um erro inesperado', () => {

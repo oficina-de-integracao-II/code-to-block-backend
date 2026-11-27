@@ -10,16 +10,30 @@ import {
 } from '@nestjs/common';
 import type { Response } from 'express';
 
-// O body-parser recusa corpo acima do limite com um erro próprio (não é
-// HttpException); sem esta conversão ele sairia como 500.
-function fromBodyParser(exception: unknown) {
-  const type = (exception as { type?: unknown } | null)?.type;
+type BodyParserError = {
+  type?: unknown;
+  status?: unknown;
+  expose?: unknown;
+  message?: unknown;
+};
 
-  return type === 'entity.too.large'
-    ? new PayloadTooLargeException(
-        'Corpo da requisição excede o limite do servidor',
-      )
-    : exception;
+// Os erros do body-parser (corpo grande demais, JSON malformado, charset não
+// suportado...) não são HttpException; sem esta conversão sairiam como 500.
+// Eles trazem o status 4xx e, com `expose`, uma mensagem segura para o cliente.
+function fromBodyParser(exception: unknown) {
+  const { type, status, expose, message } = (exception ??
+    {}) as BodyParserError;
+
+  if (typeof type !== 'string' || !expose || typeof status !== 'number') {
+    return exception;
+  }
+  if (type === 'entity.too.large') {
+    return new PayloadTooLargeException(
+      'Corpo da requisição excede o limite do servidor',
+    );
+  }
+
+  return new HttpException(String(message), status);
 }
 
 // Todo erro da API sai como { statusCode, message, error }.
