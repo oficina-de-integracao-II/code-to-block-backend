@@ -197,8 +197,9 @@ paths:
       operationId: createFunction
       summary: Cria uma função no catálogo (ADMIN)
       description: |
-        Restrito ao perfil ADMIN. O nome é único no catálogo e
-        blocoDefinicao é validado pelo schema Blockly (BE-14).
+        Restrito ao perfil ADMIN, lido do banco a cada requisição. O nome e o
+        type de blocoDefinicao são únicos no catálogo (409); blocoDefinicao é
+        validado pelo schema Blockly (BE-14).
       security:
         - bearerAuth: []
       requestBody:
@@ -252,8 +253,9 @@ paths:
       operationId: updateFunction
       summary: Substitui os dados de uma função (ADMIN)
       description: |
-        Restrito ao perfil ADMIN. Substitui todos os campos da função;
-        parametros ausente ou null limpa o valor salvo.
+        Restrito ao perfil ADMIN, lido do banco a cada requisição. Substitui
+        todos os campos da função; parametros ausente ou null limpa o valor
+        salvo. O nome e o type de blocoDefinicao são únicos no catálogo (409).
       security:
         - bearerAuth: []
       requestBody:
@@ -491,7 +493,7 @@ components:
             $ref: '#/components/schemas/ApiError'
 
     Conflict:
-      description: Conflito com um recurso existente, como um nome duplicado
+      description: Conflito com um recurso existente, como um nome ou type de bloco duplicado
       content:
         application/json:
           schema:
@@ -616,13 +618,19 @@ components:
         nome:
           type: string
           pattern: '^[A-Za-z_][A-Za-z0-9_]*$'
-          description: Nome chamado no editor, como Andar. Identificador C válido e único no catálogo.
+          maxLength: 64
+          description: |
+            Nome chamado no editor, como Andar. Identificador C válido, único no
+            catálogo e diferente das palavras reservadas do C/C++ e do Arduino.
+            Nenhum campo aceita o caractere nulo (\u0000).
         descricao:
           type: string
           minLength: 1
+          pattern: '\S'
         codigoArduino:
           type: string
           minLength: 1
+          pattern: '\S'
         parametros:
           description: Parâmetros específicos da função; ausente ou null limpa o valor.
           oneOf:

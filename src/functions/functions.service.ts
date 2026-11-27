@@ -66,7 +66,32 @@ export class FunctionsService {
     return fn;
   }
 
+  // O Blockly identifica o bloco pelo `type`: duas funções com o mesmo type
+  // fariam uma definição substituir a outra no editor. Uma função com o mesmo
+  // nome fica de fora: esse conflito o banco já acusa com a mensagem de nome.
+  private async ensureBlockTypeIsFree(
+    dto: FunctionWriteDto,
+    ignoreId?: number,
+  ) {
+    const existing = await this.prisma.functionCatalog.findFirst({
+      where: {
+        id: { not: ignoreId },
+        nome: { not: dto.nome },
+        blocoDefinicao: { path: ['type'], equals: dto.blocoDefinicao.type },
+      },
+      select: { id: true },
+    });
+
+    if (existing) {
+      throw new ConflictException(
+        'Já existe uma função com esse tipo de bloco',
+      );
+    }
+  }
+
   async create(dto: FunctionWriteDto, criadoPorId: number) {
+    await this.ensureBlockTypeIsFree(dto);
+
     try {
       return await this.prisma.functionCatalog.create({
         data: { ...toData(dto), criadoPorId },
@@ -78,6 +103,8 @@ export class FunctionsService {
   }
 
   async update(id: number, dto: FunctionWriteDto) {
+    await this.ensureBlockTypeIsFree(dto, id);
+
     try {
       return await this.prisma.functionCatalog.update({
         where: { id },

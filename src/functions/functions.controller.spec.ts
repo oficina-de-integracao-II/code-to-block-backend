@@ -96,6 +96,51 @@ describe('FunctionWriteDto', () => {
     },
   );
 
+  it.each(['if', 'void', 'while', 'int', 'setup', 'loop', 'delay'])(
+    'rejeita nome reservado do C/C++ ou do Arduino (%s)',
+    async (nome) => {
+      await expect(
+        errosDe({
+          ...dtoValido,
+          nome,
+          blocoDefinicao: { type: nome, message0: nome },
+        }),
+      ).resolves.toEqual(['nome']);
+    },
+  );
+
+  it('limita o nome a 64 caracteres', async () => {
+    await expect(
+      errosDe({ ...dtoValido, nome: 'a'.repeat(64) }),
+    ).resolves.toEqual([]);
+    await expect(
+      errosDe({ ...dtoValido, nome: 'a'.repeat(65) }),
+    ).resolves.toEqual(['nome']);
+  });
+
+  it.each([
+    ['descricao', '   '],
+    ['codigoArduino', '\n'],
+  ])('rejeita %s só com espaços', async (campo, valor) => {
+    await expect(errosDe({ ...dtoValido, [campo]: valor })).resolves.toEqual([
+      campo,
+    ]);
+  });
+
+  it.each([
+    ['descricao', { descricao: 'Pisca\u0000' }],
+    ['codigoArduino', { codigoArduino: 'delay(1);\u0000' }],
+    [
+      'blocoDefinicao',
+      { blocoDefinicao: { type: 'piscar_led', message0: 'piscar\u0000' } },
+    ],
+    ['parametros', { parametros: { pinos: ['13\u0000'] } }],
+  ])('rejeita caractere nulo em %s', async (campo, campos) => {
+    await expect(errosDe({ ...dtoValido, ...campos })).resolves.toEqual([
+      campo,
+    ]);
+  });
+
   it.each(['descricao', 'codigoArduino', 'blocoDefinicao'])(
     'rejeita payload sem %s',
     async (campo) => {

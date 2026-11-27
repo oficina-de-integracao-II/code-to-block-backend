@@ -12,6 +12,7 @@ describe('FunctionsService', () => {
     functionCatalog: {
       findMany: vi.fn(),
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
@@ -34,6 +35,8 @@ describe('FunctionsService', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Por padrão, nenhuma outra função usa o mesmo type de bloco.
+    prisma.functionCatalog.findFirst.mockResolvedValue(null);
     service = new FunctionsService(prisma as unknown as PrismaService);
   });
 
@@ -124,6 +127,23 @@ describe('FunctionsService', () => {
       );
     });
 
+    it('lança ConflictException quando outra função já usa o type do bloco', async () => {
+      prisma.functionCatalog.findFirst.mockResolvedValue({ id: 2 });
+
+      await expect(service.create(dto, 7)).rejects.toThrow(
+        'Já existe uma função com esse tipo de bloco',
+      );
+      expect(prisma.functionCatalog.findFirst).toHaveBeenCalledWith({
+        where: {
+          id: { not: undefined },
+          nome: { not: 'piscar_led' },
+          blocoDefinicao: { path: ['type'], equals: 'piscar_led' },
+        },
+        select: { id: true },
+      });
+      expect(prisma.functionCatalog.create).not.toHaveBeenCalled();
+    });
+
     it('repassa erros inesperados do banco', async () => {
       const erro = new Error('conexão perdida');
       prisma.functionCatalog.create.mockRejectedValue(erro);
@@ -164,6 +184,24 @@ describe('FunctionsService', () => {
       await expect(service.update(999, dto)).rejects.toBeInstanceOf(
         NotFoundException,
       );
+    });
+
+    it('ignora a própria função ao verificar o type do bloco', async () => {
+      prisma.functionCatalog.update.mockResolvedValue({ id: 1, ...dto });
+
+      await service.update(1, dto);
+
+      const args = prisma.functionCatalog.findFirst.mock.calls[0][0];
+      expect(args.where.id).toEqual({ not: 1 });
+    });
+
+    it('lança ConflictException quando outra função já usa o type do bloco', async () => {
+      prisma.functionCatalog.findFirst.mockResolvedValue({ id: 2 });
+
+      await expect(service.update(1, dto)).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+      expect(prisma.functionCatalog.update).not.toHaveBeenCalled();
     });
 
     it('lança ConflictException ao renomear para um nome existente', async () => {

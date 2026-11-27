@@ -96,11 +96,8 @@ export async function seedFunctionCatalog(prisma: PrismaClient) {
         ...fn,
         blocoDefinicao: validateBlockDefinition(fn.blocoDefinicao),
       },
-      update: {
-        descricao: fn.descricao,
-        codigoArduino: fn.codigoArduino,
-        blocoDefinicao: validateBlockDefinition(fn.blocoDefinicao),
-      },
+      // Só cria o que falta: não desfaz o que o admin alterou.
+      update: {},
     });
   }
 }

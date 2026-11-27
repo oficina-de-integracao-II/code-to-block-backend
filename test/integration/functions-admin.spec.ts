@@ -181,6 +181,50 @@ describe('CRUD administrativo de funções (integração)', () => {
       ]);
     });
 
+    it('POST com type de bloco já usado por outra função retorna 409', async () => {
+      const { header } = await authAs('ADMIN');
+      await criarFuncao('VireEsquerda');
+
+      const res = await http()
+        .post('/functions')
+        .set('Authorization', header)
+        .send({ ...payload, nome: 'Girar' })
+        .expect(409);
+
+      expect(res.body.message).toBe(
+        'Já existe uma função com esse tipo de bloco',
+      );
+    });
+
+    it('PUT mantendo o próprio type de bloco retorna 200', async () => {
+      const { header } = await authAs('ADMIN');
+      const fn = await criarFuncao('VireEsquerda');
+
+      await http()
+        .put(`/functions/${fn.id}`)
+        .set('Authorization', header)
+        .send(payload)
+        .expect(200);
+    });
+
+    it.each([
+      ['nome reservado', { nome: 'loop' }],
+      ['nome acima de 64 caracteres', { nome: 'a'.repeat(65) }],
+      ['descricao em branco', { descricao: '   ' }],
+      ['caractere nulo no código', { codigoArduino: 'void Vire() {}\u0000' }],
+      ['caractere nulo nos parâmetros', { parametros: { graus: '9\u00000' } }],
+    ])('POST com %s retorna 400', async (_caso, campos) => {
+      const { header } = await authAs('ADMIN');
+
+      await http()
+        .post('/functions')
+        .set('Authorization', header)
+        .send({ ...payload, ...campos })
+        .expect(400);
+
+      await expect(prisma.functionCatalog.count()).resolves.toBe(0);
+    });
+
     it('POST com campo fora do contrato retorna 400', async () => {
       const { header } = await authAs('ADMIN');
 
@@ -211,6 +255,36 @@ describe('CRUD administrativo de funções (integração)', () => {
         message: 'Acesso não permitido para este perfil',
         error: 'Forbidden',
       });
+    });
+  });
+
+  describe('com token de ADMIN desatualizado', () => {
+    it('admin rebaixado a USER recebe 403', async () => {
+      const { user, header } = await authAs('ADMIN');
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { role: 'USER' },
+      });
+
+      await http()
+        .post('/functions')
+        .set('Authorization', header)
+        .send(payload)
+        .expect(403);
+    });
+
+    it('admin removido recebe 401 e nada é gravado', async () => {
+      const { user, header } = await authAs('ADMIN');
+      await prisma.user.delete({ where: { id: user.id } });
+
+      const res = await http()
+        .post('/functions')
+        .set('Authorization', header)
+        .send(payload)
+        .expect(401);
+
+      expect(res.body.message).toBe('Token inválido ou expirado');
+      await expect(prisma.functionCatalog.count()).resolves.toBe(0);
     });
   });
 
