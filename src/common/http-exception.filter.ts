@@ -6,15 +6,29 @@ import {
   HttpException,
   HttpStatus,
   Logger,
+  PayloadTooLargeException,
 } from '@nestjs/common';
 import type { Response } from 'express';
+
+// O body-parser recusa corpo acima do limite com um erro próprio (não é
+// HttpException); sem esta conversão ele sairia como 500.
+function fromBodyParser(exception: unknown) {
+  const type = (exception as { type?: unknown } | null)?.type;
+
+  return type === 'entity.too.large'
+    ? new PayloadTooLargeException(
+        'Corpo da requisição excede o limite do servidor',
+      )
+    : exception;
+}
 
 // Todo erro da API sai como { statusCode, message, error }.
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(HttpExceptionFilter.name);
 
-  catch(exception: unknown, host: ArgumentsHost) {
+  catch(rawException: unknown, host: ArgumentsHost) {
+    const exception = fromBodyParser(rawException);
     const isHttp = exception instanceof HttpException;
     const statusCode = isHttp
       ? exception.getStatus()

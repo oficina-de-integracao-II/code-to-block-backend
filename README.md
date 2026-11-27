@@ -288,6 +288,8 @@ Rotas protegidas: `@UseGuards(JwtAuthGuard)` + `@CurrentUser()` (em `src/auth/jw
 | PUT | `/projects/:id` | Atualiza um projeto existente | RF18 |
 | DELETE | `/projects/:id` | Remove um projeto | — |
 
+**Projetos:** `POST /projects` recebe `{ nome, codigoFonte, estadoBlocos }` e o dono é sempre o usuário do token (um `usuarioId` no corpo é ignorado). Limites por campo, definidos em `PROJECT_LIMITS` (`src/projects/dto/project-write.dto.ts`): `nome` até 100 caracteres, `codigoFonte` até 10.000 e `estadoBlocos` até 50.000 caracteres como JSON. Campo acima do limite retorna 400 indicando o campo; corpo da requisição acima de 100 kB retorna 413.
+
 ---
 
 ## Estratégia de Testes
