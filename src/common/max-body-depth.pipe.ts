@@ -5,11 +5,12 @@ import {
   type PipeTransform,
 } from '@nestjs/common';
 
-// Profundidade máxima de objetos e listas no corpo da requisição. O
-// ValidationPipe (class-transformer) percorre o corpo recursivamente e estoura
-// a pilha, gerando 500, com aninhamentos a partir de uns 1.500 níveis. O limite
-// de 500 deixa folga e ainda comporta cerca de 250 blocos encadeados no Blockly.
-export const MAX_BODY_DEPTH = 500;
+// Profundidade máxima de objetos e listas no corpo da requisição. Parte do
+// caminho até o banco é recursiva (a serialização de JSON do Prisma estoura a
+// pilha, gerando 500, a partir de uns 2.100 níveis). O limite de 1.500 deixa
+// folga e comporta cerca de 750 blocos encadeados no Blockly (cada bloco
+// seguinte fica em `next.block`, dois níveis por bloco).
+export const MAX_BODY_DEPTH = 1500;
 
 // Percorre o valor sem recursão, para não estourar a pilha aqui também.
 function exceedsDepth(value: unknown, max: number) {

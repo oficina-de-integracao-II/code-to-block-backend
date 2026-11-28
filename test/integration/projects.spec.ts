@@ -145,24 +145,29 @@ describe('POST /projects (integração)', () => {
     },
   );
 
-  // Estado do Blockly com `n` blocos em sequência (cada um no `next` do outro).
+  // Estado do Blockly com `n` blocos em sequência (cada um no `next` do
+  // outro), com ids de 20 caracteres como os gerados pelo Blockly.
   function blocosEncadeados(n: number) {
-    let block: object = { type: 'Andar', id: 'b0' };
+    const id = (i: number) => String(i).padStart(20, '0');
+    let block: object = { type: 'Andar', id: id(0) };
     for (let i = 1; i < n; i++) {
-      block = { type: 'Andar', id: `b${i}`, next: { block } };
+      block = { type: 'Andar', id: id(i), next: { block } };
     }
 
     return { blocks: { languageVersion: 0, blocks: [block] } };
   }
 
-  it('aceita 200 blocos encadeados', async () => {
+  it('aceita 740 blocos encadeados, com o estado salvo sem alteração', async () => {
     const { header } = await authAs('ana@example.com');
+    const estadoBlocos = blocosEncadeados(740);
 
-    await http()
+    const res = await http()
       .post('/projects')
       .set('Authorization', header)
-      .send({ ...payload, estadoBlocos: blocosEncadeados(200) })
+      .send({ ...payload, estadoBlocos })
       .expect(201);
+
+    expect(res.body.estadoBlocos).toEqual(estadoBlocos);
   });
 
   it('retorna 400, e não 500, para estadoBlocos aninhado demais', async () => {
