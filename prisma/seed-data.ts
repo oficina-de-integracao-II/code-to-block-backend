@@ -88,19 +88,30 @@ export const predefinedFunctions = [
   },
 ];
 
+// Só cria o que falta e não desfaz o que o admin alterou. Pula a função
+// quando o nome ou o type do bloco já estão em uso: se o admin renomeou
+// Andar para Correr mantendo o type, recriar Andar repetiria o type.
 export async function seedFunctionCatalog(prisma: PrismaClient) {
   for (const fn of predefinedFunctions) {
-    await prisma.functionCatalog.upsert({
-      where: { nome: fn.nome },
-      create: {
-        ...fn,
-        blocoDefinicao: validateBlockDefinition(fn.blocoDefinicao),
+    const existing = await prisma.functionCatalog.findFirst({
+      where: {
+        OR: [
+          { nome: fn.nome },
+          {
+            blocoDefinicao: { path: ['type'], equals: fn.blocoDefinicao.type },
+          },
+        ],
       },
-      update: {
-        descricao: fn.descricao,
-        codigoArduino: fn.codigoArduino,
-        blocoDefinicao: validateBlockDefinition(fn.blocoDefinicao),
-      },
+      select: { id: true },
     });
+
+    if (!existing) {
+      await prisma.functionCatalog.create({
+        data: {
+          ...fn,
+          blocoDefinicao: validateBlockDefinition(fn.blocoDefinicao),
+        },
+      });
+    }
   }
 }

@@ -1,3 +1,4 @@
+import { ValidateBy } from 'class-validator';
 import { z } from 'zod';
 
 const blockArgumentSchema = z.record(z.string(), z.json());
@@ -19,6 +20,12 @@ export const blockDefinitionSchema = z
 
 export type BlockDefinition = z.infer<typeof blockDefinitionSchema>;
 
+function formatIssues(error: z.ZodError) {
+  return error.issues
+    .map((issue) => `${issue.path.join('.') || 'definição'}: ${issue.message}`)
+    .join('; ');
+}
+
 export function validateBlockDefinition(value: unknown): BlockDefinition {
   const result = blockDefinitionSchema.safeParse(value);
 
@@ -26,9 +33,24 @@ export function validateBlockDefinition(value: unknown): BlockDefinition {
     return result.data;
   }
 
-  const details = result.error.issues
-    .map((issue) => `${issue.path.join('.') || 'definição'}: ${issue.message}`)
-    .join('; ');
+  throw new Error(
+    `Definição de bloco Blockly inválida: ${formatIssues(result.error)}`,
+  );
+}
 
-  throw new Error(`Definição de bloco Blockly inválida: ${details}`);
+// Decorator para DTOs: aplica o mesmo schema e responde 400 com o motivo,
+// no mesmo formato dos demais erros de validação de campo.
+export function IsBlockDefinition() {
+  return ValidateBy({
+    name: 'isBlockDefinition',
+    validator: {
+      validate: (value) => blockDefinitionSchema.safeParse(value).success,
+      defaultMessage: (args) => {
+        const result = blockDefinitionSchema.safeParse(args?.value);
+        return result.success
+          ? ''
+          : `${args?.property} inválido: ${formatIssues(result.error)}`;
+      },
+    },
+  });
 }
