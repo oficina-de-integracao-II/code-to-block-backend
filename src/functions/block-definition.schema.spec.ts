@@ -43,6 +43,12 @@ describe('blockDefinitionSchema', () => {
     expect(result.success).toBe(false);
   });
 
+  it('validateBlockDefinition devolve a definição quando ela é válida', () => {
+    const definition = { type: 'piscar_led', message0: 'piscar LED' };
+
+    expect(validateBlockDefinition(definition)).toEqual(definition);
+  });
+
   it('produz erro descritivo para uma definição inválida', () => {
     expect(() =>
       validateBlockDefinition({

@@ -197,7 +197,9 @@ npx prisma migrate dev
 npx prisma db seed
 
 # O seed cria Andar, ParaFrente, ParaTras, VireEsquerda, VireDireita e Pare.
-# Ele é idempotente e pode ser executado novamente sem duplicar registros.
+# Ele é idempotente: só cria as funções que faltam e não desfaz alterações
+# feitas pelo admin. Uma função pré-definida removida volta ao rodar de novo,
+# exceto se outra função já usar o mesmo nome ou type de bloco.
 
 # 7. Rodar em modo desenvolvimento
 npm run start:dev
@@ -268,6 +270,10 @@ volumes:
 Documentação interativa (Swagger): `http://localhost:3000/docs`. Erros sempre no formato `{ statusCode, message, error }`.
 
 Rotas protegidas: `@UseGuards(JwtAuthGuard)` + `@CurrentUser()` (em `src/auth/jwt-auth.guard.ts`), com o cabeçalho `Authorization: Bearer <accessToken>`.
+
+Rotas restritas por perfil: `@UseGuards(JwtAuthGuard, RolesGuard)` + `@Roles('ADMIN')` (em `src/auth/roles.guard.ts`). Usuário autenticado sem o perfil recebe 403. O perfil é lido do banco a cada requisição, então promover ou rebaixar alguém vale na hora, sem novo login; conta removida com token ainda válido recebe 401. Não há endpoint para promover usuários; use o banco (ex.: `npx prisma studio` ou `UPDATE users SET role = 'ADMIN' WHERE email = '...'`).
+
+`POST /functions` e `PUT /functions/:id` recebem `{ nome, descricao, codigoArduino, blocoDefinicao, parametros? }`. O `nome` deve ser um identificador C de até 64 caracteres (é o que se digita no editor, ex.: `Andar`), não pode ser palavra reservada do C/C++ ou do Arduino (lista em `src/functions/reserved-names.ts`) e é único (409 se repetido). O `blocoDefinicao` é validado pelo schema Blockly da BE-14 (400 com o motivo), e seu `type` também não pode se repetir no catálogo (409), pois o Blockly identifica o bloco por ele. `descricao` e `codigoArduino` não podem ficar em branco, e nenhum campo aceita o caractere nulo (`\u0000`). O `PUT` substitui a função inteira. O código não é validado contra o nome: cabe ao admin manter a assinatura `void <nome>()` no `codigoArduino`, como nas funções do seed. A unicidade do `type` é verificada pela API, não por índice no banco; duas gravações simultâneas com o mesmo `type` poderiam passar, risco aceito por só admins gravarem.
 
 | Método | Rota | Descrição | RF |
 |---|---|---|---|
