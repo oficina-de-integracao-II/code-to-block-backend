@@ -3,6 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import type { Env } from './common/env.schema.js';
 import { HttpExceptionFilter } from './common/http-exception.filter.js';
+import { MaxBodyDepthPipe } from './common/max-body-depth.pipe.js';
+import { shallowTransformer } from './common/shallow-transformer.js';
 
 // Usado pelo main.ts e pelos testes, para ambos rodarem a mesma configuração.
 export function setupApp(app: INestApplication) {
@@ -10,7 +12,12 @@ export function setupApp(app: INestApplication) {
 
   app.enableCors({ origin: config.get('CORS_ORIGIN', { infer: true }) });
   app.useGlobalPipes(
-    new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }),
+    new MaxBodyDepthPipe(),
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transformerPackage: shallowTransformer,
+    }),
   );
   app.useGlobalFilters(new HttpExceptionFilter());
 
